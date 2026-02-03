@@ -19,8 +19,8 @@ Unlike generic PII detection tools that use pattern matching or NLP to find *any
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/pii-redact.git
-cd pii-redact
+git clone https://github.com/ivivek/pii_redact_cli.git
+cd pii_redact_cli
 
 # Create virtual environment
 python3 -m venv venv
