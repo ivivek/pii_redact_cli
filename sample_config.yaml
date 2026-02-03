@@ -1,0 +1,164 @@
+# PII Redaction Tool - Sample Configuration
+# Copy this file and fill in your actual PII values and desired replacements.
+
+# PII fields - add your personal information here
+pii:
+  # ============================================
+  # Basic Identity
+  # ============================================
+  first_name:
+    value: "John"           # Your actual first name
+    replacement: "Mike"     # Fake replacement name
+    min_partial_length: 3   # Min chars for partial matching (optional, default: 3)
+
+  last_name:
+    value: "Smith"
+    replacement: "Jones"
+
+  full_name:
+    value: "John Smith"
+    replacement: "Mike Jones"
+
+  # ============================================
+  # Contact Information
+  # ============================================
+  email:
+    value: "john.smith@gmail.com"
+    replacement: "user@example.com"
+
+  email_work:
+    value: "jsmith@company.com"
+    replacement: "user@company-redacted.com"
+
+  phone:
+    value: "+1-555-123-4567"
+    replacement: "+1-555-000-0000"
+
+  phone_alt:
+    value: "555-123-4567"       # Without country code
+    replacement: "555-000-0000"
+
+  # ============================================
+  # Address
+  # ============================================
+  street_address:
+    value: "123 Main Street"
+    replacement: "100 Example Ave"
+
+  city:
+    value: "Springfield"
+    replacement: "Anytown"
+
+  zip_code:
+    value: "12345"
+    replacement: "00000"
+    min_partial_length: 5  # Require full match for short values
+
+  # ============================================
+  # Government IDs (US)
+  # ============================================
+  ssn:
+    value: "123-45-6789"
+    replacement: "XXX-XX-XXXX"
+
+  ssn_no_dashes:
+    value: "123456789"
+    replacement: "XXXXXXXXX"
+    min_partial_length: 9  # Require full match
+
+  drivers_license:
+    value: "D1234567"
+    replacement: "DXXXXXXX"
+
+  passport:
+    value: "AB1234567"
+    replacement: "XXXXXXXXX"
+
+  # ============================================
+  # Government IDs (India)
+  # ============================================
+  aadhaar:
+    value: "1234 5678 9012"
+    replacement: "XXXX XXXX XXXX"
+
+  aadhaar_no_spaces:
+    value: "123456789012"
+    replacement: "XXXXXXXXXXXX"
+    min_partial_length: 12
+
+  pan:
+    value: "ABCDE1234F"
+    replacement: "XXXXX0000X"
+
+  # ============================================
+  # Financial
+  # ============================================
+  credit_card:
+    value: "4111-1111-1111-1111"
+    replacement: "XXXX-XXXX-XXXX-XXXX"
+
+  credit_card_no_dashes:
+    value: "4111111111111111"
+    replacement: "XXXXXXXXXXXXXXXX"
+    min_partial_length: 16
+
+  bank_account:
+    value: "1234567890"
+    replacement: "XXXXXXXXXX"
+    min_partial_length: 10
+
+  bank_routing:
+    value: "021000021"
+    replacement: "XXXXXXXXX"
+    min_partial_length: 9
+
+  # ============================================
+  # Online Accounts / Usernames
+  # ============================================
+  username:
+    value: "johnsmith123"
+    replacement: "user123"
+
+  github_username:
+    value: "john-smith-dev"
+    replacement: "anonymous-user"
+
+  # ============================================
+  # IP Addresses / Machine Info
+  # ============================================
+  home_ip:
+    value: "192.168.1.100"
+    replacement: "10.0.0.1"
+
+  server_ip:
+    value: "203.0.113.50"
+    replacement: "203.0.113.0"
+
+  mac_address:
+    value: "AA:BB:CC:DD:EE:FF"
+    replacement: "XX:XX:XX:XX:XX:XX"
+
+  hostname:
+    value: "johns-macbook"
+    replacement: "user-laptop"
+
+  # ============================================
+  # Custom Fields (add your own)
+  # ============================================
+  # employee_id:
+  #   value: "EMP12345"
+  #   replacement: "EMPXXXXX"
+  #
+  # api_key:
+  #   value: "sk_live_abc123xyz"
+  #   replacement: "sk_live_REDACTED"
+
+
+# Global settings
+settings:
+  # Default minimum characters required for partial/probable matching
+  # Shorter values may cause many false positives
+  default_min_partial_length: 3
+
+  # Case-sensitive matching (false = "John" matches "john", "JOHN", etc.)
+  case_sensitive: false
