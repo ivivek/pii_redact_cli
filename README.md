@@ -22,22 +22,28 @@ Unlike generic PII detection tools that use pattern matching or NLP to find *any
 git clone https://github.com/ivivek/pii_redact_cli.git
 cd pii_redact_cli
 
-# Create virtual environment
+# Create virtual environment and install
 python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+./venv/bin/pip install -e .
 
-# Install dependencies
-pip install -r requirements.txt
+# Add alias to run from anywhere (add to ~/.bashrc or ~/.zshrc)
+echo "alias pii_redact='$(pwd)/venv/bin/pii_redact'" >> ~/.bashrc
+source ~/.bashrc
+```
+
+### Default Config
+
+Set up a default config file so you don't need to specify `--config` every time:
+
+```bash
+mkdir -p ~/.config/pii_redact
+cp sample_config.yaml ~/.config/pii_redact/config.yaml
+# Edit with your actual PII values
 ```
 
 ## Quick Start
 
-1. **Create your config file** by copying the sample:
-   ```bash
-   cp sample_config.yaml my_pii.yaml
-   ```
-
-2. **Edit the config** with your actual PII values:
+1. **Edit the default config** with your actual PII values (`~/.config/pii_redact/config.yaml`):
    ```yaml
    pii:
      first_name:
@@ -56,39 +62,42 @@ pip install -r requirements.txt
      case_sensitive: false
    ```
 
-3. **Run the tool**:
+2. **Run the tool** from any directory:
    ```bash
-   python pii_redact.py debug.log --config my_pii.yaml
+   pii_redact debug.log
    ```
 
-4. **Share the redacted file** (`debug_redacted.log`) safely.
+3. **Share the redacted file** (`debug_redacted.log`) safely.
 
 ## Usage
 
 ```bash
-# Basic usage - single file
-python pii_redact.py input.log --config my_pii.yaml
+# Basic usage - uses default config (~/.config/pii_redact/config.yaml)
+pii_redact input.log
+
+# Use a specific config file
+pii_redact input.log --config my_pii.yaml
 
 # Process multiple files with glob pattern
-python pii_redact.py "logs/**/*.log" --config my_pii.yaml
+pii_redact "logs/**/*.log"
 
 # Specify output file (single file only)
-python pii_redact.py input.log --config my_pii.yaml --output clean.log
+pii_redact input.log --output clean.log
 
 # Preview changes without modifying files
-python pii_redact.py input.log --config my_pii.yaml --dry-run
+pii_redact input.log --dry-run
 
 # Skip interactive prompts (exact matches only)
-python pii_redact.py input.log --config my_pii.yaml --no-interactive
+pii_redact input.log --no-interactive
 
 # Disable colored output
-python pii_redact.py input.log --config my_pii.yaml --no-color
+pii_redact input.log --no-color
 
 # Customize context lines shown for partial matches
-python pii_redact.py input.log --config my_pii.yaml --context-lines 3
+pii_redact input.log --context-lines 3
 
 # Specify report output path
-python pii_redact.py input.log --config my_pii.yaml --report report.json
+pii_redact input.log --report report.json
 ```
 
 ## Configuration
@@ -311,7 +320,7 @@ A detailed report is saved for each run:
 
 4. **Test with dry-run first** - Always preview changes before modifying files:
    ```bash
-   python pii_redact.py important.log --config my_pii.yaml --dry-run
+   pii_redact important.log --dry-run
    ```
 
 5. **Keep your config file secure** - It contains your actual PII! Add it to `.gitignore`:

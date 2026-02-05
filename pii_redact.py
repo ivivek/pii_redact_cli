@@ -3,11 +3,14 @@
 PII Redaction Tool - Command line tool for redacting personally identifiable information.
 
 Usage:
-    pii-redact input.log --config my_pii.yaml
-    pii-redact "logs/**/*.log" --config my_pii.yaml
-    pii-redact input.log --config my_pii.yaml --output redacted.log
-    pii-redact input.log --config my_pii.yaml --dry-run
-    pii-redact input.log --config my_pii.yaml --no-interactive
+    pii_redact input.log
+    pii_redact input.log --config my_pii.yaml
+    pii_redact "logs/**/*.log" --config my_pii.yaml
+    pii_redact input.log --config my_pii.yaml --output redacted.log
+    pii_redact input.log --config my_pii.yaml --dry-run
+    pii_redact input.log --config my_pii.yaml --no-interactive
+
+Default config location: ~/.config/pii_redact/config.yaml
 """
 
 import argparse
@@ -16,6 +19,8 @@ from glob import glob
 from pathlib import Path
 
 from config import Config
+
+DEFAULT_CONFIG_PATH = Path.home() / ".config" / "pii_redact" / "config.yaml"
 from redactor import Redactor
 from reporters import Report, ConsoleReporter
 
@@ -23,24 +28,24 @@ from reporters import Report, ConsoleReporter
 def parse_args() -> argparse.Namespace:
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
-        prog='pii-redact',
+        prog='pii_redact',
         description='Redact personally identifiable information from files.',
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
+        epilog=f"""
 Examples:
-  %(prog)s input.log --config my_pii.yaml
-      Redact PII from input.log, output to input_redacted.log
+  %(prog)s input.log
+      Redact PII using default config ({DEFAULT_CONFIG_PATH})
 
-  %(prog)s "logs/**/*.log" --config my_pii.yaml
+  %(prog)s input.log --config my_pii.yaml
+      Redact PII from input.log using specified config
+
+  %(prog)s "logs/**/*.log"
       Redact PII from all .log files in logs/ directory recursively
 
-  %(prog)s input.log --config my_pii.yaml --output redacted.log
-      Redact PII and save to specific output file
-
-  %(prog)s input.log --config my_pii.yaml --dry-run
+  %(prog)s input.log --dry-run
       Show what would be changed without modifying files
 
-  %(prog)s input.log --config my_pii.yaml --no-interactive
+  %(prog)s input.log --no-interactive
       Skip prompts for probable matches (exact matches only)
 """
     )
@@ -52,8 +57,7 @@ Examples:
 
     parser.add_argument(
         '-c', '--config',
-        required=True,
-        help='Path to YAML config file with PII values and replacements'
+        help=f'Path to YAML config file with PII values and replacements (default: {DEFAULT_CONFIG_PATH})'
     )
 
     parser.add_argument(
@@ -127,12 +131,19 @@ def main():
     # Initialize reporter
     reporter = ConsoleReporter(use_color=not args.no_color)
 
+    # Determine config path
+    if args.config:
+        config_path = Path(args.config)
+    else:
+        config_path = DEFAULT_CONFIG_PATH
+
     # Load config
-    config_path = Path(args.config)
     try:
         config = Config.from_yaml(config_path)
     except FileNotFoundError:
         reporter.print_error(f"Config file not found: {config_path}")
+        if config_path == DEFAULT_CONFIG_PATH:
+            reporter.print_error(f"Create a config file at {DEFAULT_CONFIG_PATH} or specify one with --config")
         sys.exit(1)
     except Exception as e:
         reporter.print_error(f"Failed to load config: {e}")
