@@ -12,6 +12,11 @@ import yaml
 
 MIN_VARIATION_LENGTH = 3
 
+MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+               'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+MONTH_FULL = ['January', 'February', 'March', 'April', 'May', 'June',
+              'July', 'August', 'September', 'October', 'November', 'December']
+
 
 # ============================================
 # Scramble Helpers
@@ -280,6 +285,76 @@ def generate_credit_card_variations(digits: str, r_digits: str) -> dict[str, str
     return dict(sorted(pairs.items()))
 
 
+def generate_dob_variations(day: int, month: int, year: int,
+                            r_day: int, r_month: int, r_year: int) -> dict[str, str]:
+    """Generate date of birth variations with format-matched replacements."""
+    pairs = {}
+
+    dd = f"{day:02d}"
+    mm = f"{month:02d}"
+    yyyy = str(year)
+    yy = yyyy[2:]
+
+    rdd = f"{r_day:02d}"
+    rmm = f"{r_month:02d}"
+    ryyyy = str(r_year)
+    ryy = ryyyy[2:]
+
+    d = str(day)
+    m = str(month)
+    rd = str(r_day)
+    rm = str(r_month)
+
+    mon_short = MONTH_SHORT[month - 1]
+    mon_full = MONTH_FULL[month - 1]
+    r_mon_short = MONTH_SHORT[r_month - 1]
+    r_mon_full = MONTH_FULL[r_month - 1]
+
+    # Numeric with separators: DD/MM/YYYY variants
+    for sep in ['/', '-', '.']:
+        pairs[f"{dd}{sep}{mm}{sep}{yyyy}"] = f"{rdd}{sep}{rmm}{sep}{ryyyy}"
+    # MM/DD/YYYY variants
+    for sep in ['/', '-']:
+        pairs[f"{mm}{sep}{dd}{sep}{yyyy}"] = f"{rmm}{sep}{rdd}{sep}{ryyyy}"
+    # YYYY-MM-DD, YYYY/MM/DD
+    for sep in ['-', '/']:
+        pairs[f"{yyyy}{sep}{mm}{sep}{dd}"] = f"{ryyyy}{sep}{rmm}{sep}{rdd}"
+
+    # Two-digit year
+    for sep in ['/', '-']:
+        pairs[f"{dd}{sep}{mm}{sep}{yy}"] = f"{rdd}{sep}{rmm}{sep}{ryy}"
+        pairs[f"{mm}{sep}{dd}{sep}{yy}"] = f"{rmm}{sep}{rdd}{sep}{ryy}"
+
+    # No leading zeros (only when day or month < 10)
+    if day < 10 or month < 10:
+        for sep in ['/', '-']:
+            pairs[f"{d}{sep}{m}{sep}{yyyy}"] = f"{rd}{sep}{rm}{sep}{ryyyy}"
+
+    # No separators
+    pairs[f"{dd}{mm}{yyyy}"] = f"{rdd}{rmm}{ryyyy}"
+    pairs[f"{mm}{dd}{yyyy}"] = f"{rmm}{rdd}{ryyyy}"
+    pairs[f"{yyyy}{mm}{dd}"] = f"{ryyyy}{rmm}{rdd}"
+
+    # Month name short
+    pairs[f"{dd} {mon_short} {yyyy}"] = f"{rdd} {r_mon_short} {ryyyy}"
+    pairs[f"{dd}-{mon_short}-{yyyy}"] = f"{rdd}-{r_mon_short}-{ryyyy}"
+    pairs[f"{mon_short} {dd}, {yyyy}"] = f"{r_mon_short} {rdd}, {ryyyy}"
+
+    # Month name full
+    pairs[f"{dd} {mon_full} {yyyy}"] = f"{rdd} {r_mon_full} {ryyyy}"
+    pairs[f"{dd}-{mon_full}-{yyyy}"] = f"{rdd}-{r_mon_full}-{ryyyy}"
+    pairs[f"{mon_full} {dd}, {yyyy}"] = f"{r_mon_full} {rdd}, {ryyyy}"
+
+    # Without leading zero + month name (only when day < 10)
+    if day < 10:
+        pairs[f"{d} {mon_short} {yyyy}"] = f"{rd} {r_mon_short} {ryyyy}"
+        pairs[f"{mon_short} {d}, {yyyy}"] = f"{r_mon_short} {rd}, {ryyyy}"
+        pairs[f"{d} {mon_full} {yyyy}"] = f"{rd} {r_mon_full} {ryyyy}"
+        pairs[f"{mon_full} {d}, {yyyy}"] = f"{r_mon_full} {rd}, {ryyyy}"
+
+    return dict(sorted(pairs.items()))
+
+
 # ============================================
 # Input Helpers
 # ============================================
@@ -522,6 +597,161 @@ def collect_single_credit_card(num: int):
     return {'type': 'card', 'num': num, 'label': label, 'pairs': pairs}
 
 
+def collect_single_pan(num: int):
+    """Collect one PAN card entry interactively."""
+    raw = prompt("Enter PAN number (e.g., ABCDE1234F, or press Enter to skip): ")
+    if not raw:
+        return None
+
+    value = raw.upper().strip()
+    if len(value) != 10:
+        print("  PAN must be exactly 10 characters.")
+        return None
+
+    def_replacement = scramble(value[:5]).upper() + scramble_digits(value[5:9]) + scramble(value[9]).upper()
+    replacement = prompt(
+        f"Replacement PAN (default: {def_replacement}): ",
+        validator=validate_length(10, "Replacement PAN"),
+    ) or def_replacement
+    replacement = replacement.upper()
+
+    pairs = {value: replacement}
+    label = f"PAN_{num}"
+    print_variation_pairs(pairs, label)
+
+    return {'type': 'pan', 'num': num, 'label': label, 'pairs': pairs}
+
+
+def collect_single_bank_account(num: int):
+    """Collect one bank account number entry interactively."""
+    raw = prompt("Enter bank account number (or press Enter to skip): ")
+    if not raw:
+        return None
+
+    digits = strip_non_digits(raw)
+    if not digits:
+        print("  No digits found in input.")
+        return None
+
+    def_replacement = scramble_digits(digits)
+    replacement = prompt(
+        f"Replacement account number (default: {def_replacement}): ",
+        validator=validate_digit_length(len(digits), "Replacement account"),
+    ) or def_replacement
+    replacement = strip_non_digits(replacement)
+
+    pairs = {digits: replacement}
+    label = f"BANK_{num}"
+    print_variation_pairs(pairs, label)
+
+    return {'type': 'bank', 'num': num, 'label': label, 'pairs': pairs}
+
+
+def collect_single_ifsc(num: int):
+    """Collect one IFSC code entry interactively."""
+    raw = prompt("Enter IFSC code (e.g., SBIN0001234, or press Enter to skip): ")
+    if not raw:
+        return None
+
+    value = raw.upper().strip()
+    if len(value) != 11:
+        print("  IFSC code must be exactly 11 characters.")
+        return None
+
+    def_replacement = scramble(value[:4]).upper() + '0' + scramble_digits(value[5:])
+    replacement = prompt(
+        f"Replacement IFSC (default: {def_replacement}): ",
+        validator=validate_length(11, "Replacement IFSC"),
+    ) or def_replacement
+    replacement = replacement.upper()
+
+    pairs = {value: replacement}
+    label = f"IFSC_{num}"
+    print_variation_pairs(pairs, label)
+
+    return {'type': 'ifsc', 'num': num, 'label': label, 'pairs': pairs}
+
+
+def collect_single_micr(num: int):
+    """Collect one MICR code entry interactively."""
+    raw = prompt("Enter MICR code (9 digits, or press Enter to skip): ",
+                 validator=lambda v: validate_digits(v, 9, "MICR")(v) if v else None)
+    if not raw:
+        return None
+
+    digits = strip_non_digits(raw)
+    def_replacement = scramble_digits(digits)
+    replacement = prompt(
+        f"Replacement MICR (default: {def_replacement}): ",
+        validator=validate_digit_length(9, "Replacement MICR"),
+    ) or def_replacement
+    replacement = strip_non_digits(replacement)
+
+    pairs = {digits: replacement}
+    label = f"MICR_{num}"
+    print_variation_pairs(pairs, label)
+
+    return {'type': 'micr', 'num': num, 'label': label, 'pairs': pairs}
+
+
+def collect_single_dob(num: int):
+    """Collect one date of birth entry interactively."""
+    raw = prompt("Enter date of birth as DD MM YYYY (e.g., 15 01 1990, or press Enter to skip): ")
+    if not raw:
+        return None
+
+    parts = raw.split()
+    if len(parts) != 3:
+        print("  Please enter exactly three numbers: DD MM YYYY")
+        return None
+
+    try:
+        day, month, year = int(parts[0]), int(parts[1]), int(parts[2])
+    except ValueError:
+        print("  Please enter valid numbers for DD MM YYYY.")
+        return None
+
+    if not (1 <= day <= 31 and 1 <= month <= 12 and 1900 <= year <= 2100):
+        print("  Invalid date. Day must be 1-31, month 1-12, year 1900-2100.")
+        return None
+
+    # Generate random replacement date
+    r_day = random.randint(1, 28)
+    r_month = random.randint(1, 12)
+    r_year = random.randint(1950, 2005)
+
+    print(f"  Replacement date: {r_day:02d}/{r_month:02d}/{r_year}")
+    custom = prompt("  Press Enter to accept, or enter custom DD MM YYYY: ")
+    if custom:
+        cparts = custom.split()
+        if len(cparts) == 3:
+            try:
+                r_day, r_month, r_year = int(cparts[0]), int(cparts[1]), int(cparts[2])
+            except ValueError:
+                print("  Invalid input, using generated replacement.")
+
+    pairs = generate_dob_variations(day, month, year, r_day, r_month, r_year)
+    label = f"DOB_{num}"
+    print_variation_pairs(pairs, label)
+
+    return {'type': 'dob', 'num': num, 'label': label, 'pairs': pairs}
+
+
+def collect_single_custom(num: int):
+    """Collect one custom text PII entry interactively."""
+    value = prompt("Enter the PII text value (or press Enter to skip): ")
+    if not value:
+        return None
+
+    replacement = prompt("Enter the replacement text: ", required=True)
+
+    pairs = {value: replacement}
+    label = f"CUSTOM_{num}"
+    print_variation_pairs(pairs, label)
+
+    return {'type': 'custom', 'num': num, 'label': label, 'pairs': pairs}
+
+
 # ============================================
 # Config I/O
 # ============================================
@@ -596,7 +826,10 @@ def write_config(pii_dict: dict, settings: dict, config_path: Path):
             ungrouped.append(key)
 
     # Sort groups by type order, then by number
-    type_order = {'name': 0, 'phone': 1, 'email': 2, 'aadhar': 3, 'card': 4}
+    type_order = {
+        'name': 0, 'phone': 1, 'email': 2, 'aadhar': 3, 'card': 4,
+        'pan': 5, 'bank': 6, 'ifsc': 7, 'micr': 8, 'dob': 9, 'custom': 10,
+    }
 
     def group_sort_key(group_key):
         parts = group_key.rsplit('_', 1)
@@ -610,6 +843,12 @@ def write_config(pii_dict: dict, settings: dict, config_path: Path):
         'email': 'EMAIL ADDRESSES',
         'aadhar': 'AADHAR NUMBERS',
         'card': 'CREDIT CARDS',
+        'pan': 'PAN CARDS',
+        'bank': 'BANK ACCOUNTS',
+        'ifsc': 'IFSC CODES',
+        'micr': 'MICR CODES',
+        'dob': 'DATES OF BIRTH',
+        'custom': 'CUSTOM',
     }
 
     prev_type = None
@@ -760,6 +999,78 @@ def run_full_init(config_path: Path):
         if not prompt_yes_no("Add another credit card?"):
             break
 
+    # PAN Cards
+    print("\n--- PAN Cards ---")
+    num = 1
+    while True:
+        entry = collect_single_pan(num)
+        if entry is None:
+            break
+        all_entries.append(entry)
+        num += 1
+        if not prompt_yes_no("Add another PAN card?"):
+            break
+
+    # Bank Accounts
+    print("\n--- Bank Accounts ---")
+    num = 1
+    while True:
+        entry = collect_single_bank_account(num)
+        if entry is None:
+            break
+        all_entries.append(entry)
+        num += 1
+        if not prompt_yes_no("Add another bank account?"):
+            break
+
+    # IFSC Codes
+    print("\n--- IFSC Codes ---")
+    num = 1
+    while True:
+        entry = collect_single_ifsc(num)
+        if entry is None:
+            break
+        all_entries.append(entry)
+        num += 1
+        if not prompt_yes_no("Add another IFSC code?"):
+            break
+
+    # MICR Codes
+    print("\n--- MICR Codes ---")
+    num = 1
+    while True:
+        entry = collect_single_micr(num)
+        if entry is None:
+            break
+        all_entries.append(entry)
+        num += 1
+        if not prompt_yes_no("Add another MICR code?"):
+            break
+
+    # Dates of Birth
+    print("\n--- Dates of Birth ---")
+    num = 1
+    while True:
+        entry = collect_single_dob(num)
+        if entry is None:
+            break
+        all_entries.append(entry)
+        num += 1
+        if not prompt_yes_no("Add another date of birth?"):
+            break
+
+    # Custom Text
+    print("\n--- Custom Text ---")
+    num = 1
+    while True:
+        entry = collect_single_custom(num)
+        if entry is None:
+            break
+        all_entries.append(entry)
+        num += 1
+        if not prompt_yes_no("Add another custom text entry?"):
+            break
+
     if not all_entries:
         print("\nNo PII entries collected. Config not written.")
         return
@@ -778,20 +1089,26 @@ def run_add(config_path: Path):
     pii_dict, settings = load_existing_config(config_path)
 
     type_info = [
-        ('1', 'name',   'Name',        collect_single_name),
-        ('2', 'phone',  'Phone',       collect_single_phone),
-        ('3', 'email',  'Email',       collect_single_email),
-        ('4', 'aadhar', 'Aadhar',      collect_single_aadhar),
-        ('5', 'card',   'Credit Card', collect_single_credit_card),
+        ('1',  'name',   'Name',           collect_single_name),
+        ('2',  'phone',  'Phone',          collect_single_phone),
+        ('3',  'email',  'Email',          collect_single_email),
+        ('4',  'aadhar', 'Aadhar',         collect_single_aadhar),
+        ('5',  'card',   'Credit Card',    collect_single_credit_card),
+        ('6',  'pan',    'PAN Card',       collect_single_pan),
+        ('7',  'bank',   'Bank Account',   collect_single_bank_account),
+        ('8',  'ifsc',   'IFSC Code',      collect_single_ifsc),
+        ('9',  'micr',   'MICR Code',      collect_single_micr),
+        ('10', 'dob',    'Date of Birth',  collect_single_dob),
+        ('11', 'custom', 'Custom Text',    collect_single_custom),
     ]
 
     print("\nWhat type of PII do you want to add?")
     for key, prefix, display_name, _ in type_info:
         existing = count_entries(pii_dict, prefix)
         suffix = f"  ({existing} existing)" if existing else ""
-        print(f"  {key}. {display_name}{suffix}")
+        print(f"  {key:>2}. {display_name}{suffix}")
 
-    choice = prompt("\nChoose (1-5): ", required=True)
+    choice = prompt("\nChoose (1-11): ", required=True)
 
     selected = None
     for key, prefix, display_name, collector in type_info:
