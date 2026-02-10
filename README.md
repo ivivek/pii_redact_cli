@@ -32,63 +32,81 @@ pip install -r requirements.txt
 
 ## Quick Start
 
-1. **Create your config file** by copying the sample:
+1. **Generate your config file** interactively:
+   ```bash
+   python pii_redact.py init
+   ```
+   The wizard asks for your name, phone, email, Aadhar, and credit card details,
+   then auto-generates all format variations (with/without separators, initials,
+   masked versions, etc.) with scrambled replacement values.
+
+2. **Or create manually** by copying the sample:
    ```bash
    cp sample_config.yaml my_pii.yaml
    ```
 
-2. **Edit the config** with your actual PII values:
-   ```yaml
-   pii:
-     first_name:
-       value: "John"          # Your actual name
-       replacement: "Mike"    # Fake replacement
-
-     email:
-       value: "john@gmail.com"
-       replacement: "user@example.com"
-
-     phone:
-       value: "555-123-4567"
-       replacement: "555-000-0000"
-
-   settings:
-     case_sensitive: false
-   ```
-
 3. **Run the tool**:
    ```bash
-   python pii_redact.py debug.log --config my_pii.yaml
+   python pii_redact.py debug.log --config pii_config.yaml
    ```
 
 4. **Share the redacted file** (`debug_redacted.log`) safely.
 
 ## Usage
 
+### Config Generator
+
+```bash
+# Full interactive wizard — generates config with all PII type variations
+python pii_redact.py init
+
+# Use a custom config path
+python pii_redact.py init -c my_pii.yaml
+
+# Add one more PII entry to an existing config
+python pii_redact.py init --add
+python pii_redact.py init --add -c my_pii.yaml
+```
+
+The `init` wizard walks you through each PII type:
+- **Names** — asks for first, middle, last name separately. Generates permutations
+  (first-last, last-first, initials, comma-separated, concatenated, etc.)
+- **Phone numbers** — asks for digits and country code. Generates variations with/without
+  country code prefix, 5+5 and 3+3+4 groupings, space/dash/dot separators
+- **Email** — generates `[at]`/`(at)`/`[dot]` obfuscated variants
+- **Aadhar** — 12-digit number with 4-4-4 grouping, masked variants (first/last 4 visible)
+- **Credit Card** — 16-digit number with 4-4-4-4 grouping, masked variants
+
+Each variation gets a **format-matched replacement** — the replacement preserves the
+exact structure of that variation. Defaults are auto-scrambled from your input; you
+can accept them or type your own (must match the original length).
+
+### Redacting Files
+
 ```bash
 # Basic usage - single file
-python pii_redact.py input.log --config my_pii.yaml
+python pii_redact.py input.log --config pii_config.yaml
 
 # Process multiple files with glob pattern
-python pii_redact.py "logs/**/*.log" --config my_pii.yaml
+python pii_redact.py "logs/**/*.log" --config pii_config.yaml
 
 # Specify output file (single file only)
-python pii_redact.py input.log --config my_pii.yaml --output clean.log
+python pii_redact.py input.log --config pii_config.yaml --output clean.log
 
 # Preview changes without modifying files
-python pii_redact.py input.log --config my_pii.yaml --dry-run
+python pii_redact.py input.log --config pii_config.yaml --dry-run
 
 # Skip interactive prompts (exact matches only)
-python pii_redact.py input.log --config my_pii.yaml --no-interactive
+python pii_redact.py input.log --config pii_config.yaml --no-interactive
 
 # Disable colored output
-python pii_redact.py input.log --config my_pii.yaml --no-color
+python pii_redact.py input.log --config pii_config.yaml --no-color
 
 # Customize context lines shown for partial matches
-python pii_redact.py input.log --config my_pii.yaml --context-lines 3
+python pii_redact.py input.log --config pii_config.yaml --context-lines 3
 
 # Specify report output path
-python pii_redact.py input.log --config my_pii.yaml --report report.json
+python pii_redact.py input.log --config pii_config.yaml --report report.json
 ```
 
 ## Configuration
@@ -299,19 +317,15 @@ A detailed report is saved for each run:
      min_partial_length: 5  # Require full match
    ```
 
-3. **Include variations** - Add entries for different formats of the same data:
-   ```yaml
-   phone_with_country:
-     value: "+1-555-123-4567"
-     replacement: "+1-555-000-0000"
-   phone_without_country:
-     value: "555-123-4567"
-     replacement: "555-000-0000"
+3. **Use `init` to auto-generate variations** instead of manually listing each format:
+   ```bash
+   python pii_redact.py init
    ```
+   This generates all phone/name/card/Aadhar format variations automatically.
 
 4. **Test with dry-run first** - Always preview changes before modifying files:
    ```bash
-   python pii_redact.py important.log --config my_pii.yaml --dry-run
+   python pii_redact.py important.log --config pii_config.yaml --dry-run
    ```
 
 5. **Keep your config file secure** - It contains your actual PII! Add it to `.gitignore`:
