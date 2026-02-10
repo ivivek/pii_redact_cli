@@ -756,10 +756,10 @@ def collect_single_custom(num: int):
 # Config I/O
 # ============================================
 
-def get_max_number(pii_dict: dict, type_prefix: str) -> int:
-    """Find the highest entry number for a given type prefix in existing config."""
+def get_max_entry_number(pii_dict: dict) -> int:
+    """Find the highest entry number across all keys in existing config."""
     max_num = 0
-    pattern = re.compile(rf'^{re.escape(type_prefix)}_(\d+)_v\d+$')
+    pattern = re.compile(r'^.+?_(\d+)_v\d+$')
     for key in pii_dict:
         m = pattern.match(key)
         if m:
@@ -767,10 +767,10 @@ def get_max_number(pii_dict: dict, type_prefix: str) -> int:
     return max_num
 
 
-def count_entries(pii_dict: dict, type_prefix: str) -> int:
-    """Count distinct entry numbers for a type (e.g., name_1 and name_2 = 2)."""
+def count_total_entries(pii_dict: dict) -> int:
+    """Count distinct entry numbers across all keys."""
     nums = set()
-    pattern = re.compile(rf'^{re.escape(type_prefix)}_(\d+)_v\d+$')
+    pattern = re.compile(r'^.+?_(\d+)_v\d+$')
     for key in pii_dict:
         m = pattern.match(key)
         if m:
@@ -779,14 +779,16 @@ def count_entries(pii_dict: dict, type_prefix: str) -> int:
 
 
 def entries_to_pii_dict(entries: list[dict]) -> dict:
-    """Convert collector entries to a flat pii dict for YAML output."""
+    """Convert collector entries to a flat pii dict for YAML output.
+
+    Uses generic 'text_N_vM' keys so the config file doesn't reveal PII types.
+    """
     pii = {}
     for entry in entries:
-        type_prefix = entry['type']
         num = entry['num']
         pairs = entry['pairs']
         for i, (variation, replacement) in enumerate(pairs.items(), 1):
-            key = f"{type_prefix}_{num}_v{i}"
+            key = f"text_{num}_v{i}"
             pii[key] = {
                 'value': variation,
                 'replacement': replacement,
@@ -825,47 +827,15 @@ def write_config(pii_dict: dict, settings: dict, config_path: Path):
         else:
             ungrouped.append(key)
 
-    # Sort groups by type order, then by number
-    type_order = {
-        'name': 0, 'phone': 1, 'email': 2, 'aadhar': 3, 'card': 4,
-        'pan': 5, 'bank': 6, 'ifsc': 7, 'micr': 8, 'dob': 9, 'custom': 10,
-    }
-
+    # Sort groups by entry number
     def group_sort_key(group_key):
         parts = group_key.rsplit('_', 1)
-        type_name = parts[0]
         num = int(parts[1]) if len(parts) > 1 else 0
-        return (type_order.get(type_name, 99), num)
+        return num
 
-    type_labels = {
-        'name': 'NAMES',
-        'phone': 'PHONE NUMBERS',
-        'email': 'EMAIL ADDRESSES',
-        'aadhar': 'AADHAR NUMBERS',
-        'card': 'CREDIT CARDS',
-        'pan': 'PAN CARDS',
-        'bank': 'BANK ACCOUNTS',
-        'ifsc': 'IFSC CODES',
-        'micr': 'MICR CODES',
-        'dob': 'DATES OF BIRTH',
-        'custom': 'CUSTOM',
-    }
-
-    prev_type = None
     for group_key in sorted(groups.keys(), key=group_sort_key):
-        type_name = group_key.rsplit('_', 1)[0]
-
-        # Section header when type changes
-        if type_name != prev_type:
-            lines.append("")
-            lines.append(f"  # {'=' * 44}")
-            lines.append(f"  # {type_labels.get(type_name, type_name.upper())}")
-            lines.append(f"  # {'=' * 44}")
-            prev_type = type_name
-
-        # Group label
-        label = group_key.upper()
-        lines.append(f"  # --- {label} ---")
+        num = group_key.rsplit('_', 1)[1]
+        lines.append(f"  # --- entry {num} ---")
 
         # Sort variations by var number
         var_keys = sorted(groups[group_key],
@@ -1075,6 +1045,10 @@ def run_full_init(config_path: Path):
         print("\nNo PII entries collected. Config not written.")
         return
 
+    # Assign globally sequential entry numbers so config uses text_1, text_2, etc.
+    for idx, entry in enumerate(all_entries, 1):
+        entry['num'] = idx
+
     pii_dict = entries_to_pii_dict(all_entries)
     settings = {'default_min_partial_length': 3, 'case_sensitive': False}
     write_config(pii_dict, settings, config_path)
@@ -1089,52 +1063,53 @@ def run_add(config_path: Path):
     pii_dict, settings = load_existing_config(config_path)
 
     type_info = [
-        ('1',  'name',   'Name',           collect_single_name),
-        ('2',  'phone',  'Phone',          collect_single_phone),
-        ('3',  'email',  'Email',          collect_single_email),
-        ('4',  'aadhar', 'Aadhar',         collect_single_aadhar),
-        ('5',  'card',   'Credit Card',    collect_single_credit_card),
-        ('6',  'pan',    'PAN Card',       collect_single_pan),
-        ('7',  'bank',   'Bank Account',   collect_single_bank_account),
-        ('8',  'ifsc',   'IFSC Code',      collect_single_ifsc),
-        ('9',  'micr',   'MICR Code',      collect_single_micr),
-        ('10', 'dob',    'Date of Birth',  collect_single_dob),
-        ('11', 'custom', 'Custom Text',    collect_single_custom),
+        ('1',  'Name',           collect_single_name),
+        ('2',  'Phone',          collect_single_phone),
+        ('3',  'Email',          collect_single_email),
+        ('4',  'Aadhar',         collect_single_aadhar),
+        ('5',  'Credit Card',    collect_single_credit_card),
+        ('6',  'PAN Card',       collect_single_pan),
+        ('7',  'Bank Account',   collect_single_bank_account),
+        ('8',  'IFSC Code',      collect_single_ifsc),
+        ('9',  'MICR Code',      collect_single_micr),
+        ('10', 'Date of Birth',  collect_single_dob),
+        ('11', 'Custom Text',    collect_single_custom),
     ]
 
+    total_existing = count_total_entries(pii_dict)
     print("\nWhat type of PII do you want to add?")
-    for key, prefix, display_name, _ in type_info:
-        existing = count_entries(pii_dict, prefix)
-        suffix = f"  ({existing} existing)" if existing else ""
-        print(f"  {key:>2}. {display_name}{suffix}")
+    for key, display_name, _ in type_info:
+        print(f"  {key:>2}. {display_name}")
+    if total_existing:
+        print(f"\n  ({total_existing} existing entries in config)")
 
     choice = prompt("\nChoose (1-11): ", required=True)
 
     selected = None
-    for key, prefix, display_name, collector in type_info:
+    for key, display_name, collector in type_info:
         if choice == key:
-            selected = (prefix, collector)
+            selected = collector
             break
 
     if not selected:
         print("Invalid choice.")
         return
 
-    type_prefix, collector = selected
-    next_num = get_max_number(pii_dict, type_prefix) + 1
+    next_num = get_max_entry_number(pii_dict) + 1
 
-    entry = collector(next_num)
+    entry = selected(next_num)
     if entry is None:
         print("No entry collected.")
         return
 
-    # Add new variations to existing pii dict
+    # Assign the global entry number and add to config
+    entry['num'] = next_num
     new_entries = entries_to_pii_dict([entry])
     pii_dict.update(new_entries)
 
     write_config(pii_dict, settings, config_path)
 
-    print(f"\nAdded {len(entry['pairs'])} variations for [{entry['label']}] to {config_path}")
+    print(f"\nAdded {len(entry['pairs'])} variations to {config_path}")
 
 
 def run_init(argv: list[str]):
