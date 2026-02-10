@@ -17,5 +17,5 @@ dependencies = [
 pii_redact = "pii_redact:main"
 
 [tool.setuptools]
-py-modules = ["pii_redact", "config", "matchers", "redactor", "reporters"]
+py-modules = ["pii_redact", "config", "config_generator", "matchers", "redactor", "reporters"]
 packages = ["file_handlers"]
