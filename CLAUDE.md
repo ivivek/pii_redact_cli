@@ -35,7 +35,7 @@ No test suite or linting configuration exists currently.
 **Entry Point:** `pii_redact.py` - CLI argument parsing and main orchestration. Detects `init` subcommand and delegates to `config_generator.py`.
 
 **Core Flow:**
-1. `config_generator.py` — interactive wizard that collects PII and generates all format variations with format-matched replacements. Supports `init` (full wizard) and `init --add` (single entry). Variation generators for: name, phone, email, Aadhar, credit card.
+1. `config_generator.py` — interactive wizard that collects PII and generates all format variations with format-matched replacements. Supports `init` (full wizard) and `init --add` (single entry). Variation generators for: name, phone, email, Aadhar, credit card, DoB. Simple collectors for: PAN, bank account, IFSC, MICR, custom text.
 2. `config.py` loads YAML config into `Config` and `PIIField` dataclasses
 3. `matchers.py` finds exact matches (word boundaries) and partial matches (embedded in larger tokens)
 4. `redactor.py` orchestrates processing, routes to appropriate file handler
@@ -66,7 +66,7 @@ settings:
   case_sensitive: false
 ```
 
-**Auto-generated config** (from `init`): uses `{type}_{num}_v{var}` keys (e.g., `name_1_v1`, `phone_2_v3`). Each variation has its own format-matched replacement. Both formats are fully compatible with the redactor.
+**Auto-generated config** (from `init`): uses anonymized `text_{num}_v{var}` keys (e.g., `text_1_v1`, `text_2_v3`) so the config file doesn't reveal PII types. Each variation has its own format-matched replacement. Both formats are fully compatible with the redactor.
 
 ## Output
 
