@@ -117,8 +117,9 @@ pii_redact input.log --no-color
 # Customize context lines shown for partial matches
 pii_redact input.log --context-lines 3
 
-# Specify report output path
-pii_redact input.log --report report.json
+# Generate a JSON report (not created by default)
+pii_redact input.log --report                  # Auto-named: <output>_report.json
+pii_redact input.log --report report.json      # Custom report path
 ```
 
 ## Configuration
@@ -268,10 +269,9 @@ Summary
   Total probable skipped: 2
   Total replacements: 16
 
-Report saved: debug_redacted_report.json
 ```
 
-### JSON Report
+### JSON Report (opt-in via `--report`)
 
 A detailed report is saved for each run:
 

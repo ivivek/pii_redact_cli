@@ -89,7 +89,10 @@ Examples:
 
     parser.add_argument(
         '--report',
-        help='Path to save JSON report file (default: <first_output>_report.json)'
+        nargs='?',
+        const='auto',
+        default=None,
+        help='Save JSON report file. Optionally specify path (default: <first_output>_report.json)'
     )
 
     return parser.parse_args()
@@ -194,9 +197,9 @@ def main():
     if args.dry_run:
         reporter.print_dry_run_notice()
 
-    # Save report
-    if not args.dry_run:
-        if args.report:
+    # Save report (only when --report flag is passed)
+    if not args.dry_run and args.report:
+        if args.report != 'auto':
             report_path = Path(args.report)
         elif report.files:
             # Default: save next to first output file

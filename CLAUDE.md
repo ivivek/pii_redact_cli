@@ -72,4 +72,4 @@ settings:
 ## Output
 
 - Redacted files: `{filename}_redacted{extension}`
-- JSON reports: timestamps, file stats, match counts
+- JSON reports (opt-in via `--report`): timestamps, file stats, match counts
