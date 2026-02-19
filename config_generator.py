@@ -282,6 +282,17 @@ def generate_credit_card_variations(digits: str, r_digits: str) -> dict[str, str
         pairs[f"{g1}-{m4}-{m4}-{m4}"] = f"{rg1}-{m4}-{m4}-{m4}"
         pairs[f"{g1}{m12}"] = f"{rg1}{m12}"
 
+    # Masked: first 6 (BIN) + last 4 visible
+    bin6 = digits[:6]
+    r_bin6 = r_digits[:6]
+    mid6 = digits[6:12]
+    r_mid6 = r_digits[6:12]
+    for mask in ['X', '*']:
+        m6 = mask * 6
+        pairs[f"{bin6}{m6}{g4}"] = f"{r_bin6}{m6}{rg4}"
+        pairs[f"{bin6} {m6} {g4}"] = f"{r_bin6} {m6} {rg4}"
+        pairs[f"{bin6}-{m6}-{g4}"] = f"{r_bin6}-{m6}-{rg4}"
+
     return dict(sorted(pairs.items()))
 
 
