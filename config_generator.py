@@ -1113,14 +1113,27 @@ def run_add(config_path: Path):
         print("No entry collected.")
         return
 
-    # Assign the global entry number and add to config
+    # Filter out variations whose value already exists in config
+    existing_values = {v['value'] for v in pii_dict.values() if isinstance(v, dict)}
+    new_pairs = {k: v for k, v in entry['pairs'].items() if k not in existing_values}
+
+    if not new_pairs:
+        print("\nAll variations already exist in config. Nothing to add.")
+        return
+
+    skipped = len(entry['pairs']) - len(new_pairs)
+    if skipped:
+        print(f"\nSkipping {skipped} variation(s) already in config.")
+
+    # Assign the global entry number and add only new variations to config
     entry['num'] = next_num
+    entry['pairs'] = new_pairs
     new_entries = entries_to_pii_dict([entry])
     pii_dict.update(new_entries)
 
     write_config(pii_dict, settings, config_path)
 
-    print(f"\nAdded {len(entry['pairs'])} variations to {config_path}")
+    print(f"\nAdded {len(new_pairs)} new variation(s) to {config_path}")
 
 
 def run_init(argv: list[str]):
