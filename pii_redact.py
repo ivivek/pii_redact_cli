@@ -50,10 +50,11 @@ Examples:
         help='Input file or glob pattern (e.g., "logs/**/*.log")'
     )
 
+    default_config = Path.home() / '.config' / 'pii_redact' / 'pii_config.yaml'
     parser.add_argument(
         '-c', '--config',
-        required=True,
-        help='Path to YAML config file with PII values and replacements'
+        default=str(default_config),
+        help=f'Path to YAML config file with PII values and replacements (default: {default_config})'
     )
 
     parser.add_argument(

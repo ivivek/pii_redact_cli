@@ -47,9 +47,9 @@ source ~/.bashrc
    cp sample_config.yaml my_pii.yaml
    ```
 
-3. **Run the tool**:
+3. **Run the tool** (uses default config at `~/.config/pii_redact/pii_config.yaml`):
    ```bash
-   pii_redact debug.log --config pii_config.yaml
+   pii_redact debug.log
    ```
 
 4. **Share the redacted file** (`debug_redacted.log`) safely.
@@ -93,29 +93,32 @@ so the file itself doesn't reveal what type of PII each entry represents.
 ### Redacting Files
 
 ```bash
-# Basic usage - single file
-pii_redact input.log --config pii_config.yaml
+# Basic usage - single file (default config: ~/.config/pii_redact/pii_config.yaml)
+pii_redact input.log
+
+# Use a custom config file
+pii_redact input.log -c my_pii.yaml
 
 # Process multiple files with glob pattern
-pii_redact "logs/**/*.log" --config pii_config.yaml
+pii_redact "logs/**/*.log"
 
 # Specify output file (single file only)
-pii_redact input.log --config pii_config.yaml --output clean.log
+pii_redact input.log --output clean.log
 
 # Preview changes without modifying files
-pii_redact input.log --config pii_config.yaml --dry-run
+pii_redact input.log --dry-run
 
 # Skip interactive prompts (exact matches only)
-pii_redact input.log --config pii_config.yaml --no-interactive
+pii_redact input.log --no-interactive
 
 # Disable colored output
-pii_redact input.log --config pii_config.yaml --no-color
+pii_redact input.log --no-color
 
 # Customize context lines shown for partial matches
-pii_redact input.log --config pii_config.yaml --context-lines 3
+pii_redact input.log --context-lines 3
 
 # Specify report output path
-pii_redact input.log --config pii_config.yaml --report report.json
+pii_redact input.log --report report.json
 ```
 
 ## Configuration
@@ -334,7 +337,7 @@ A detailed report is saved for each run:
 
 4. **Test with dry-run first** - Always preview changes before modifying files:
    ```bash
-   pii_redact important.log --config pii_config.yaml --dry-run
+   pii_redact important.log --dry-run
    ```
 
 5. **Keep your config file secure** - It contains your actual PII! Add it to `.gitignore`:
