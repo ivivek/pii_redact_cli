@@ -76,7 +76,14 @@ Examples:
     parser.add_argument(
         '--no-interactive',
         action='store_true',
-        help='Skip interactive prompts for probable matches'
+        help='Skip interactive prompts for probable matches (same as --partial none)'
+    )
+
+    parser.add_argument(
+        '--partial',
+        choices=['all', 'none', 'ask'],
+        default=None,
+        help='How to handle probable/partial matches: all (replace all), none (skip all), ask (prompt interactively, default)'
     )
 
     parser.add_argument(
@@ -171,11 +178,19 @@ def main():
         reporter.print_error("--output can only be used with a single input file")
         sys.exit(1)
 
+    # Determine partial match mode: --partial takes precedence over --no-interactive
+    if args.partial:
+        partial_mode = args.partial
+    elif args.no_interactive:
+        partial_mode = 'none'
+    else:
+        partial_mode = 'ask'
+
     # Initialize redactor
     redactor = Redactor(
         config=config,
         dry_run=args.dry_run,
-        interactive=not args.no_interactive,
+        partial_mode=partial_mode,
         context_lines=args.context_lines,
         reporter=reporter
     )

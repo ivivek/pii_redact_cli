@@ -20,13 +20,13 @@ class Redactor:
         self,
         config: Config,
         dry_run: bool = False,
-        interactive: bool = True,
+        partial_mode: str = 'ask',
         context_lines: int = 2,
         reporter: ConsoleReporter = None
     ):
         self.config = config
         self.dry_run = dry_run
-        self.interactive = interactive
+        self.partial_mode = partial_mode  # 'all', 'none', or 'ask'
         self.context_lines = context_lines
         self.reporter = reporter or ConsoleReporter()
         self.matcher = Matcher(config.pii_fields, config.case_sensitive)
@@ -84,21 +84,21 @@ class Redactor:
         self.reporter.print_partial_summary(len(partial_matches))
 
         # Handle partial matches
-        if partial_matches and self.interactive:
+        if partial_matches and self.partial_mode == 'ask':
             selected_indices = self._prompt_partial_matches(partial_matches)
 
-            # Apply selected partial replacements
-            # Need to recalculate positions after exact matches were applied
-            # For simplicity, we'll do a second pass on the text
             for i, match in enumerate(partial_matches):
                 if i in selected_indices:
                     stats.add_partial_replaced(match.pii_field.name)
-                    # Replace in the current text using the matched_text
                     text = self._replace_partial(text, match)
                 else:
                     stats.add_partial_skipped(match.pii_field.name)
+        elif partial_matches and self.partial_mode == 'all':
+            for match in partial_matches:
+                stats.add_partial_replaced(match.pii_field.name)
+                text = self._replace_partial(text, match)
         elif partial_matches:
-            # Non-interactive mode: skip all partial matches
+            # partial_mode == 'none': skip all partial matches
             for match in partial_matches:
                 stats.add_partial_skipped(match.pii_field.name)
 
@@ -154,30 +154,31 @@ class Redactor:
 
         self.reporter.print_partial_summary(len(partial_matches))
 
-        if partial_matches and self.interactive:
+        if partial_matches and self.partial_mode == 'ask':
             selected_indices = self._prompt_partial_matches(partial_matches)
+        elif partial_matches and self.partial_mode == 'all':
+            selected_indices = set(range(len(partial_matches)))
+        else:
+            selected_indices = set()
 
+        if partial_matches and selected_indices:
             # For selected partial matches, we need to do another pass
             def redact_partial(s: str) -> str:
                 result = s
                 for i, match in enumerate(partial_matches):
                     if i in selected_indices:
-                        # Check if this match is in this string
                         if match.matched_text in result or match.matched_text.lower() in result.lower():
                             result = self._replace_partial(result, match)
                 return result
 
-            # Re-process with partial replacements
             redacted_data = StructuredHandler.redact_structure(redacted_data, redact_partial)
 
+        if partial_matches:
             for i, match in enumerate(partial_matches):
                 if i in selected_indices:
                     stats.add_partial_replaced(match.pii_field.name)
                 else:
                     stats.add_partial_skipped(match.pii_field.name)
-        elif partial_matches:
-            for match in partial_matches:
-                stats.add_partial_skipped(match.pii_field.name)
 
         # Write output
         if not self.dry_run:
