@@ -117,8 +117,10 @@ pii_redact input.log --output clean.log
 # Preview changes without modifying files
 pii_redact input.log --dry-run
 
-# Skip interactive prompts (exact matches only)
-pii_redact input.log --no-interactive
+# Handle partial/probable matches without prompting
+pii_redact input.log --partial all         # Replace all partial matches
+pii_redact input.log --partial none        # Skip all partial matches
+pii_redact input.log --no-interactive      # Same as --partial none
 
 # Disable colored output
 pii_redact input.log --no-color
@@ -237,6 +239,8 @@ Found probable match: "JohnSmithDev" contains "John" (line 45)
 
 Replace probable matches? [a]ll / [n]one / [s]elect:
 ```
+
+To skip this prompt, use `--partial all` (replace all) or `--partial none` (skip all).
 
 You can then choose to:
 - `a` - Replace all probable matches

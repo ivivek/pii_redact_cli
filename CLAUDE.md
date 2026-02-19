@@ -26,7 +26,8 @@ pii_redact file.log                        # Single file
 pii_redact *.log *.txt                     # Multiple files via shell wildcards
 pii_redact "logs/**/*.log"                 # Quoted glob for recursive matching
 pii_redact file.log --dry-run              # Preview without modifying
-pii_redact file.log --no-interactive       # Skip partial match prompts
+pii_redact file.log --partial all          # Replace all partial matches (no prompts)
+pii_redact file.log --partial none         # Skip all partial matches (no prompts)
 pii_redact file.log -c custom_config.yaml  # Use a custom config path
 ```
 
