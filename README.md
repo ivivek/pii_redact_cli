@@ -96,11 +96,20 @@ so the file itself doesn't reveal what type of PII each entry represents.
 # Basic usage - single file (default config: ~/.config/pii_redact/pii_config.yaml)
 pii_redact input.log
 
+# Multiple files
+pii_redact file1.log file2.log file3.log
+
+# Shell wildcard - all .log files in current directory
+pii_redact *.log
+
+# Mixed patterns
+pii_redact *.log *.txt
+
+# Quoted glob for recursive matching
+pii_redact "logs/**/*.log"
+
 # Use a custom config file
 pii_redact input.log -c my_pii.yaml
-
-# Process multiple files with glob pattern
-pii_redact "logs/**/*.log"
 
 # Specify output file (single file only)
 pii_redact input.log --output clean.log

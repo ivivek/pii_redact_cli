@@ -22,10 +22,11 @@ pii_redact init -c my_pii.yaml             # Custom config path
 pii_redact init --add                       # Add one entry to existing config
 
 # Redact files (uses default config at ~/.config/pii_redact/pii_config.yaml)
-pii_redact file.log
+pii_redact file.log                        # Single file
+pii_redact *.log *.txt                     # Multiple files via shell wildcards
+pii_redact "logs/**/*.log"                 # Quoted glob for recursive matching
 pii_redact file.log --dry-run              # Preview without modifying
 pii_redact file.log --no-interactive       # Skip partial match prompts
-pii_redact "logs/**/*.log"                 # Glob patterns for multiple files
 pii_redact file.log -c custom_config.yaml  # Use a custom config path
 ```
 
