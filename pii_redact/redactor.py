@@ -6,11 +6,42 @@ import re
 from pathlib import Path
 from typing import Callable
 
-from config import Config, PIIField
-from matchers import Match, Matcher, apply_replacement
-from reporters import FileStats, Report, ConsoleReporter
-from file_handlers.text_handler import TextHandler
-from file_handlers.structured_handler import JSONHandler, YAMLHandler, StructuredHandler
+from .config import Config, PIIField
+from .matchers import Match, Matcher, apply_replacement
+from .reporters import FileStats, Report, ConsoleReporter
+from .file_handlers.text_handler import TextHandler
+from .file_handlers.structured_handler import JSONHandler, YAMLHandler, StructuredHandler
+
+
+def redact_text(text: str, config: Config = None, config_path: str = None) -> str:
+    """Redact PII from a string and return the redacted version.
+
+    Applies exact matches only (no interactive partial match prompts).
+    Loads config from default path (~/.config/pii_redact/pii_config.yaml)
+    if neither config nor config_path is provided.
+
+    Args:
+        text: The string to redact.
+        config: Pre-loaded Config object (for reuse across calls).
+        config_path: Path to YAML config file. Ignored if config is provided.
+
+    Returns:
+        The redacted string.
+    """
+    if config is None:
+        if config_path:
+            config = Config.from_yaml(Path(config_path))
+        else:
+            config = Config.from_yaml(Path.home() / '.config' / 'pii_redact' / 'pii_config.yaml')
+
+    matcher = Matcher(config.pii_fields, config.case_sensitive)
+    exact_matches = matcher.find_exact_matches(text)
+
+    # Apply replacements from end to start to preserve positions
+    for match in sorted(exact_matches, key=lambda m: m.start, reverse=True):
+        text = apply_replacement(text, match, preserve_case=True)
+
+    return text
 
 
 class Redactor:

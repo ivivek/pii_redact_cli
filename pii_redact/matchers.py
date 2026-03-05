@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass
 from typing import Iterator
 
-from config import PIIField
+from .config import PIIField
 
 
 @dataclass

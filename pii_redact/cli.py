@@ -16,9 +16,9 @@ import sys
 from glob import glob
 from pathlib import Path
 
-from config import Config
-from redactor import Redactor
-from reporters import Report, ConsoleReporter
+from .config import Config
+from .redactor import Redactor
+from .reporters import Report, ConsoleReporter
 
 
 def parse_args() -> argparse.Namespace:
