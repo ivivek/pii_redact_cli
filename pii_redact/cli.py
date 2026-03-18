@@ -140,7 +140,7 @@ def main():
     """Main entry point."""
     # Handle 'init' subcommand
     if len(sys.argv) > 1 and sys.argv[1] == 'init':
-        from config_generator import run_init
+        from .config_generator import run_init
         run_init(sys.argv[2:])
         return
 
