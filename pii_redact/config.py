@@ -8,6 +8,11 @@ from pathlib import Path
 from typing import Any
 
 
+# Default config location, shared by `pii-redact init` and the redactor so that
+# a config written by init is the one the redactor picks up with no -c flag.
+DEFAULT_CONFIG_PATH = Path.home() / '.config' / 'pii_redact' / 'pii_config.yaml'
+
+
 @dataclass
 class PIIField:
     """Represents a single PII field with its value and replacement."""

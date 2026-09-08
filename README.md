@@ -51,7 +51,7 @@ covered without hand-writing them.
 **Option B — Start from the sample config** (recommended if you'd rather hand-edit):
 
 ```bash
-pii-redact init --sample                   # writes ./pii_config.yaml
+pii-redact init --sample
 pii-redact init --sample -c my_pii.yaml    # or choose your own path
 ```
 
@@ -68,18 +68,18 @@ repo checkout. If you have the repo cloned, it's the same file as
 **Then redact:**
 
 ```bash
-pii-redact debug.log -c pii_config.yaml
-```
-
-Or place your config at `~/.config/pii_redact/pii_config.yaml` and the `-c` flag
-becomes optional:
-
-```bash
-pii-redact init -c ~/.config/pii_redact/pii_config.yaml   # wizard, or --sample
 pii-redact debug.log
 ```
 
+Both `init` and the redactor default to the same config path
+(`~/.config/pii_redact/pii_config.yaml`), so a config created by `init` is
+picked up with no `-c` flag. Pass `-c` on both commands to use another path.
+
 Finally, **share the redacted file** (`debug_redacted.log`) safely.
+
+> **Note:** `init` and `init --sample` create a config from scratch, so they warn
+> and ask for confirmation before replacing an existing one. To extend a config
+> you already have rather than replace it, use `pii-redact init --add`.
 
 ## Usage
 
@@ -102,7 +102,10 @@ pii-redact init --add -c my_pii.yaml
 ```
 
 `--sample` and `--add` are mutually exclusive; with neither, `init` runs the wizard.
-All three prompt before overwriting an existing config.
+All `init` forms default to `~/.config/pii_redact/pii_config.yaml` — the same path
+the redactor reads — and create parent directories as needed. `init` and
+`init --sample` warn and ask before replacing an existing config; `--add` extends
+it in place.
 
 The `init` wizard walks you through each PII type:
 - **Names** — first, middle, last name. Generates permutations (first-last, last-first, initials, comma-separated, concatenated, etc.)

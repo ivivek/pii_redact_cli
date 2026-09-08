@@ -16,7 +16,7 @@ import sys
 from glob import glob
 from pathlib import Path
 
-from .config import Config
+from .config import Config, DEFAULT_CONFIG_PATH
 from .redactor import Redactor
 from .reporters import Report, ConsoleReporter
 
@@ -55,11 +55,10 @@ Examples:
         help='Input file(s) or glob pattern(s) (e.g., *.log "logs/**/*.log")'
     )
 
-    default_config = Path.home() / '.config' / 'pii_redact' / 'pii_config.yaml'
     parser.add_argument(
         '-c', '--config',
-        default=str(default_config),
-        help=f'Path to YAML config file with PII values and replacements (default: {default_config})'
+        default=str(DEFAULT_CONFIG_PATH),
+        help=f'Path to YAML config file with PII values and replacements (default: {DEFAULT_CONFIG_PATH})'
     )
 
     parser.add_argument(

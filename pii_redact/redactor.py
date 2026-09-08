@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 from typing import Callable
 
-from .config import Config, PIIField
+from .config import Config, PIIField, DEFAULT_CONFIG_PATH
 from .matchers import Match, Matcher, apply_replacement
 from .reporters import FileStats, Report, ConsoleReporter
 from .file_handlers.text_handler import TextHandler
@@ -32,7 +32,7 @@ def redact_text(text: str, config: Config = None, config_path: str = None) -> st
         if config_path:
             config = Config.from_yaml(Path(config_path))
         else:
-            config = Config.from_yaml(Path.home() / '.config' / 'pii_redact' / 'pii_config.yaml')
+            config = Config.from_yaml(DEFAULT_CONFIG_PATH)
 
     matcher = Matcher(config.pii_fields, config.case_sensitive)
     exact_matches = matcher.find_exact_matches(text)

@@ -10,6 +10,8 @@ from pathlib import Path
 
 import yaml
 
+from .config import DEFAULT_CONFIG_PATH
+
 
 MIN_VARIATION_LENGTH = 3
 
@@ -886,6 +888,7 @@ def write_config(pii_dict: dict, settings: dict, config_path: Path):
     lines.append(f"  case_sensitive: {case_val}")
     lines.append("")
 
+    config_path.parent.mkdir(parents=True, exist_ok=True)
     config_path.write_text('\n'.join(lines), encoding='utf-8')
 
 
@@ -909,15 +912,47 @@ def load_existing_config(config_path: Path) -> tuple[dict, dict]:
 # Main Commands
 # ============================================
 
+def confirm_overwrite(config_path: Path) -> bool:
+    """Warn that config_path is about to be replaced. Returns True to proceed."""
+    if not config_path.exists():
+        return True
+
+    print(f"\nWarning: {config_path} already exists.")
+
+    try:
+        existing_pii, _ = load_existing_config(config_path)
+    except Exception:
+        existing_pii = {}
+
+    # count_total_entries only recognises init-generated {type}_{num}_v{var} keys,
+    # so fall back to the raw key count for hand-written configs.
+    entry_count = count_total_entries(existing_pii)
+    value_count = len(existing_pii)
+
+    if entry_count:
+        entries = "entry" if entry_count == 1 else "entries"
+        print(f"  It holds {entry_count} PII {entries} ({value_count} values). "
+              f"Overwriting discards all of them.")
+    elif value_count:
+        values = "value" if value_count == 1 else "values"
+        print(f"  It holds {value_count} PII {values}. Overwriting discards all of them.")
+    else:
+        print("  Overwriting discards its current contents.")
+    print("  To keep it and add one more entry instead, run: pii-redact init --add")
+
+    if not prompt_yes_no("Overwrite?"):
+        print("Aborted.")
+        return False
+    return True
+
+
 def run_full_init(config_path: Path):
     """Run the full interactive config wizard."""
     print("\nPII Config Generator")
     print("=" * 40)
 
-    if config_path.exists():
-        if not prompt_yes_no(f"\n{config_path} already exists. Overwrite?"):
-            print("Aborted.")
-            return
+    if not confirm_overwrite(config_path):
+        return
 
     all_entries = []
 
@@ -1139,10 +1174,8 @@ def run_add(config_path: Path):
 
 def run_sample(config_path: Path):
     """Write the bundled sample config to config_path for manual editing."""
-    if config_path.exists():
-        if not prompt_yes_no(f"\n{config_path} already exists. Overwrite?"):
-            print("Aborted.")
-            return
+    if not confirm_overwrite(config_path):
+        return
 
     sample = resources.files(__package__).joinpath('sample_config.yaml').read_text(encoding='utf-8')
 
@@ -1176,8 +1209,8 @@ def run_init(argv: list[str]):
     )
     parser.add_argument(
         '-c', '--config',
-        default='pii_config.yaml',
-        help='Config file path (default: pii_config.yaml)',
+        default=str(DEFAULT_CONFIG_PATH),
+        help=f'Config file path (default: {DEFAULT_CONFIG_PATH})',
     )
     args = parser.parse_args(argv)
 
