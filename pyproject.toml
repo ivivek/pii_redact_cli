@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=77.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,7 +7,8 @@ name = "pii-redact"
 version = "0.1.0"
 description = "CLI tool for redacting personally identifiable information from files"
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.10"
 authors = [
     {name = "Vivek K", email = "vivek.oss@linetra.com"},
@@ -29,7 +30,6 @@ classifiers = [
     "Environment :: Console",
     "Intended Audience :: Developers",
     "Intended Audience :: System Administrators",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
