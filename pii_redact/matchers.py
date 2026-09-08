@@ -265,12 +265,22 @@ def apply_replacement(text: str, match: Match, preserve_case: bool = True) -> st
 
 
 def _adjust_case(replacement: str, original: str) -> str:
-    """Adjust the case of replacement to match original's pattern."""
+    """Adjust the case of replacement to match original's pattern.
+
+    Only ever adds capitalisation; never lowercases the middle of a
+    replacement, so multi-word values keep the casing the config asked for
+    ("John Smith" -> "Mike Jones", not "Mike jones").
+    """
     if original.isupper():
         return replacement.upper()
     elif original.islower():
         return replacement.lower()
-    elif original.istitle() or (original and original[0].isupper()):
-        return replacement.capitalize()
+    elif original.istitle():
+        # Uppercase the first letter of every word, leaving the rest of each
+        # word alone. str.title()/str.capitalize() would clobber internal caps
+        # ("O'Brien" -> "O'brien", "Mike Jones" -> "Mike jones").
+        return re.sub(r'\S+', lambda m: m.group()[:1].upper() + m.group()[1:], replacement)
+    elif original and original[0].isupper():
+        return replacement[:1].upper() + replacement[1:]
     else:
         return replacement
