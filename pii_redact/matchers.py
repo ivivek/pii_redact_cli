@@ -111,6 +111,44 @@ class Matcher:
 
         return result
 
+    def partial_candidate_fields(self) -> list[PIIField]:
+        """Fields eligible for partial matching, longest value first.
+
+        Skips non-alphanumeric PII (emails, phone numbers), where matching
+        inside a larger token is rarely meaningful, and values shorter than
+        their min_partial_length.
+        """
+        return [
+            f for f in self.pii_fields_sorted
+            if f.value.replace(' ', '').isalnum() and len(f.value) >= f.min_partial_length
+        ]
+
+    def redact_token(self, token: str) -> str:
+        """Replace every configured PII value found inside a single token.
+
+        A token can embed more than one PII value ("JohnSmithDev" holds both
+        "John" and "Smith"), so replacing only one leaves the rest in the
+        output. Longest values claim their span first, so overlapping values
+        ("John" inside "Johnson") do not both fire, and replacements are
+        applied right to left in one pass so replacement text is never
+        itself rescanned.
+        """
+        flags = 0 if self.case_sensitive else re.IGNORECASE
+
+        claimed: list[tuple[int, int, PIIField]] = []
+        for pii_field in self.partial_candidate_fields():
+            for m in re.finditer(re.escape(pii_field.value), token, flags):
+                start, end = m.start(), m.end()
+                if any(start < c_end and end > c_start for c_start, c_end, _ in claimed):
+                    continue
+                claimed.append((start, end, pii_field))
+
+        for start, end, pii_field in sorted(claimed, key=lambda c: c[0], reverse=True):
+            adjusted = _adjust_case(pii_field.replacement, token[start:end])
+            token = token[:start] + adjusted + token[end:]
+
+        return token
+
     def find_partial_matches(self, text: str, exact_matches: list[Match] = None) -> list[Match]:
         """
         Find partial/probable matches where PII value is part of a larger word/token.
@@ -124,15 +162,7 @@ class Matcher:
         if exact_matches:
             exact_ranges = [(m.start, m.end) for m in exact_matches]
 
-        for pii_field in self.pii_fields_sorted:
-            # Skip non-alphanumeric PII (emails, phone numbers) - partial matching less useful
-            if not pii_field.value.replace(' ', '').isalnum():
-                continue
-
-            # Skip if value is too short for partial matching
-            if len(pii_field.value) < pii_field.min_partial_length:
-                continue
-
+        for pii_field in self.partial_candidate_fields():
             pattern = re.escape(pii_field.value)
 
             for m in re.finditer(pattern, text, flags):

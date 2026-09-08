@@ -2,7 +2,6 @@
 Core redaction engine.
 """
 
-import re
 from pathlib import Path
 from typing import Callable
 
@@ -219,30 +218,18 @@ class Redactor:
         return stats
 
     def _replace_partial(self, text: str, match: Match) -> str:
-        """Replace a partial match in text, preserving case."""
-        pii_value = match.pii_field.value
-        replacement = match.pii_field.replacement
-        matched_text = match.matched_text
+        """Replace a partial match's token in text, preserving case.
 
-        # Find where the PII value is within the matched text
-        flags = 0 if self.config.case_sensitive else re.IGNORECASE
-        pattern = re.escape(pii_value)
+        Redacts every configured PII value inside the token, not just the one
+        the match was reported under, so a token embedding two values does not
+        keep one of them.
+        """
+        token = match.matched_text
+        new_token = self.matcher.redact_token(token)
 
-        def replace_preserving_case(m):
-            original = m.group()
-            if original.isupper():
-                return replacement.upper()
-            elif original.islower():
-                return replacement.lower()
-            elif original[0].isupper():
-                return replacement.capitalize()
-            return replacement
-
-        # Replace the PII value within the matched text
-        new_matched = re.sub(pattern, replace_preserving_case, matched_text, flags=flags)
-
-        # Now replace the matched_text with new_matched in the full text
-        return text.replace(matched_text, new_matched)
+        if new_token == token:
+            return text
+        return text.replace(token, new_token)
 
     def _prompt_partial_matches(self, matches: list[Match]) -> set[int]:
         """Prompt user to select which partial matches to replace."""
