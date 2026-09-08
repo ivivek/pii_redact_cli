@@ -17,16 +17,51 @@ Unlike generic PII detection tools that use pattern matching or NLP to find *any
 
 ## Installation
 
+Not on PyPI — install straight from GitHub. Requires Python 3.10+ and `git`.
+
+**With pipx** (recommended — isolated environment, command on your `PATH`):
+
 ```bash
-# Clone the repository
+pipx install git+https://github.com/ivivek/pii_redact_cli.git
+```
+
+**With pip**, into a virtual environment:
+
+```bash
+python3 -m venv ~/.venvs/pii-redact
+~/.venvs/pii-redact/bin/pip install git+https://github.com/ivivek/pii_redact_cli.git
+
+# (Optional) Add an alias to ~/.bashrc for global access
+echo "alias pii-redact='$HOME/.venvs/pii-redact/bin/pii-redact'" >> ~/.bashrc
+source ~/.bashrc
+```
+
+Either way the command is `pii-redact`, and everything it needs — including the
+sample config — is bundled, so no repo checkout is required to use it.
+
+**Pin to a specific tag or branch** by appending `@ref`:
+
+```bash
+pipx install "git+https://github.com/ivivek/pii_redact_cli.git@v0.1.0"
+```
+
+**Updating and removing.** The installed package is named `pii-redact`, which is
+what pip and pipx track it as:
+
+```bash
+pipx install --force git+https://github.com/ivivek/pii_redact_cli.git   # update
+pipx uninstall pii-redact                                              # remove
+```
+
+### From a clone (for development)
+
+```bash
 git clone https://github.com/ivivek/pii_redact_cli.git
 cd pii_redact_cli
 
-# Create virtual environment and install
 python3 -m venv venv
 ./venv/bin/pip install -e .
 
-# (Optional) Add alias to ~/.bashrc for global access
 echo "alias pii-redact='$(pwd)/venv/bin/pii-redact'" >> ~/.bashrc
 source ~/.bashrc
 ```
