@@ -33,26 +33,53 @@ source ~/.bashrc
 
 ## Quick Start
 
-1. **Generate your config file** interactively:
-   ```bash
-   pii-redact init
-   ```
-   The wizard walks you through each PII type — names, phone numbers, emails,
-   Aadhar, credit cards, PAN, bank accounts, IFSC, MICR, dates of birth, and
-   custom text — then auto-generates all format variations with scrambled
-   replacement values.
+First you need a config file mapping your PII values to their replacements.
+There are two ways to create one — pick whichever fits how you like to work.
 
-2. **Or create manually** by copying the sample:
-   ```bash
-   cp sample_config.yaml my_pii.yaml
-   ```
+**Option A — Interactive wizard** (recommended for thorough coverage):
 
-3. **Run the tool** (uses default config at `~/.config/pii_redact/pii_config.yaml`):
-   ```bash
-   pii-redact debug.log
-   ```
+```bash
+pii-redact init
+```
 
-4. **Share the redacted file** (`debug_redacted.log`) safely.
+The wizard walks you through each PII type — names, phone numbers, emails,
+Aadhar, credit cards, PAN, bank accounts, IFSC, MICR, dates of birth, and
+custom text — then auto-generates all format variations with scrambled
+replacement values. Use this when you want every format a value can appear in
+covered without hand-writing them.
+
+**Option B — Start from the sample config** (recommended if you'd rather hand-edit):
+
+```bash
+pii-redact init --sample                   # writes ./pii_config.yaml
+pii-redact init --sample -c my_pii.yaml    # or choose your own path
+```
+
+This writes a fully commented config pre-filled with example values across ~30
+common PII types (identity, contact, address, US and India government IDs,
+financial, usernames, IP addresses). Open it, swap the example values for your
+own, and delete the entries you don't need. Use this when you want to see the
+whole config format at a glance.
+
+The sample ships inside the package, so `--sample` works on any install with no
+repo checkout. If you have the repo cloned, it's the same file as
+[`pii_redact/sample_config.yaml`](pii_redact/sample_config.yaml).
+
+**Then redact:**
+
+```bash
+pii-redact debug.log -c pii_config.yaml
+```
+
+Or place your config at `~/.config/pii_redact/pii_config.yaml` and the `-c` flag
+becomes optional:
+
+```bash
+pii-redact init -c ~/.config/pii_redact/pii_config.yaml   # wizard, or --sample
+pii-redact debug.log
+```
+
+Finally, **share the redacted file** (`debug_redacted.log`) safely.
 
 ## Usage
 
@@ -65,10 +92,17 @@ pii-redact init
 # Use a custom config path
 pii-redact init -c my_pii.yaml
 
+# Write the bundled sample config to edit by hand (skips the wizard)
+pii-redact init --sample
+pii-redact init --sample -c my_pii.yaml
+
 # Add one more PII entry to an existing config
 pii-redact init --add
 pii-redact init --add -c my_pii.yaml
 ```
+
+`--sample` and `--add` are mutually exclusive; with neither, `init` runs the wizard.
+All three prompt before overwriting an existing config.
 
 The `init` wizard walks you through each PII type:
 - **Names** — first, middle, last name. Generates permutations (first-last, last-first, initials, comma-separated, concatenated, etc.)

@@ -18,3 +18,6 @@ pii-redact = "pii_redact.cli:main"
 
 [tool.setuptools]
 packages = ["pii_redact", "pii_redact.file_handlers"]
+
+[tool.setuptools.package-data]
+pii_redact = ["sample_config.yaml"]

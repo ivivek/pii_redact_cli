@@ -5,6 +5,7 @@ import argparse
 import random
 import re
 import sys
+from importlib import resources
 from pathlib import Path
 
 import yaml
@@ -1136,16 +1137,42 @@ def run_add(config_path: Path):
     print(f"\nAdded {len(new_pairs)} new variation(s) to {config_path}")
 
 
+def run_sample(config_path: Path):
+    """Write the bundled sample config to config_path for manual editing."""
+    if config_path.exists():
+        if not prompt_yes_no(f"\n{config_path} already exists. Overwrite?"):
+            print("Aborted.")
+            return
+
+    sample = resources.files(__package__).joinpath('sample_config.yaml').read_text(encoding='utf-8')
+
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(sample, encoding='utf-8')
+
+    print(f"\nSample config written to: {config_path}")
+    print("\nNext steps:")
+    print(f"  1. Edit {config_path} and replace the example values with your own")
+    print("  2. Delete any entries you don't need")
+    print(f"  3. Run: pii-redact yourfile.log -c {config_path}")
+    print("\nNote: this file will hold your real PII. Keep it out of version control.")
+
+
 def run_init(argv: list[str]):
     """Entry point for the init subcommand."""
     parser = argparse.ArgumentParser(
         prog='pii-redact init',
-        description='Generate PII config file interactively.',
+        description='Create a PII config file, interactively or from the bundled sample.',
     )
-    parser.add_argument(
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
         '--add',
         action='store_true',
         help='Add a single PII entry to an existing config instead of creating a new one',
+    )
+    mode.add_argument(
+        '--sample',
+        action='store_true',
+        help='Write the bundled sample config to edit by hand instead of running the wizard',
     )
     parser.add_argument(
         '-c', '--config',
@@ -1157,7 +1184,9 @@ def run_init(argv: list[str]):
     config_path = Path(args.config)
 
     try:
-        if args.add:
+        if args.sample:
+            run_sample(config_path)
+        elif args.add:
             run_add(config_path)
         else:
             run_full_init(config_path)

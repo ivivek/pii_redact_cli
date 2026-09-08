@@ -20,6 +20,7 @@ alias pii-redact='/path/to/pii_redact/venv/bin/pii-redact'
 pii-redact init
 pii-redact init -c my_pii.yaml             # Custom config path
 pii-redact init --add                       # Add one entry to existing config
+pii-redact init --sample                    # Write bundled sample config to edit by hand
 
 # Redact files (uses default config at ~/.config/pii_redact/pii_config.yaml)
 pii-redact file.log                        # Single file
@@ -38,7 +39,7 @@ No test suite or linting configuration exists currently.
 **Entry Point:** `pii_redact/cli.py` - CLI argument parsing and main orchestration. Detects `init` subcommand and delegates to `config_generator.py`.
 
 **Core Flow:**
-1. `config_generator.py` — interactive wizard that collects PII and generates all format variations with format-matched replacements. Supports `init` (full wizard) and `init --add` (single entry). Variation generators for: name, phone, email, Aadhar, credit card, DoB. Simple collectors for: PAN, bank account, IFSC, MICR, custom text.
+1. `config_generator.py` — interactive wizard that collects PII and generates all format variations with format-matched replacements. Supports `init` (full wizard), `init --add` (single entry), and `init --sample` (copies bundled `pii_redact/sample_config.yaml` for hand-editing, no prompts). Variation generators for: name, phone, email, Aadhar, credit card, DoB. Simple collectors for: PAN, bank account, IFSC, MICR, custom text.
 2. `config.py` loads YAML config into `Config` and `PIIField` dataclasses
 3. `matchers.py` finds exact matches (word boundaries) and partial matches (embedded in larger tokens)
 4. `redactor.py` orchestrates processing, routes to appropriate file handler
