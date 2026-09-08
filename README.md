@@ -27,7 +27,7 @@ python3 -m venv venv
 ./venv/bin/pip install -e .
 
 # (Optional) Add alias to ~/.bashrc for global access
-echo "alias pii_redact='$(pwd)/venv/bin/pii_redact'" >> ~/.bashrc
+echo "alias pii-redact='$(pwd)/venv/bin/pii-redact'" >> ~/.bashrc
 source ~/.bashrc
 ```
 
@@ -35,7 +35,7 @@ source ~/.bashrc
 
 1. **Generate your config file** interactively:
    ```bash
-   pii_redact init
+   pii-redact init
    ```
    The wizard walks you through each PII type — names, phone numbers, emails,
    Aadhar, credit cards, PAN, bank accounts, IFSC, MICR, dates of birth, and
@@ -49,7 +49,7 @@ source ~/.bashrc
 
 3. **Run the tool** (uses default config at `~/.config/pii_redact/pii_config.yaml`):
    ```bash
-   pii_redact debug.log
+   pii-redact debug.log
    ```
 
 4. **Share the redacted file** (`debug_redacted.log`) safely.
@@ -60,14 +60,14 @@ source ~/.bashrc
 
 ```bash
 # Full interactive wizard — generates config with all PII type variations
-pii_redact init
+pii-redact init
 
 # Use a custom config path
-pii_redact init -c my_pii.yaml
+pii-redact init -c my_pii.yaml
 
 # Add one more PII entry to an existing config
-pii_redact init --add
-pii_redact init --add -c my_pii.yaml
+pii-redact init --add
+pii-redact init --add -c my_pii.yaml
 ```
 
 The `init` wizard walks you through each PII type:
@@ -94,43 +94,43 @@ so the file itself doesn't reveal what type of PII each entry represents.
 
 ```bash
 # Basic usage - single file (default config: ~/.config/pii_redact/pii_config.yaml)
-pii_redact input.log
+pii-redact input.log
 
 # Multiple files
-pii_redact file1.log file2.log file3.log
+pii-redact file1.log file2.log file3.log
 
 # Shell wildcard - all .log files in current directory
-pii_redact *.log
+pii-redact *.log
 
 # Mixed patterns
-pii_redact *.log *.txt
+pii-redact *.log *.txt
 
 # Quoted glob for recursive matching
-pii_redact "logs/**/*.log"
+pii-redact "logs/**/*.log"
 
 # Use a custom config file
-pii_redact input.log -c my_pii.yaml
+pii-redact input.log -c my_pii.yaml
 
 # Specify output file (single file only)
-pii_redact input.log --output clean.log
+pii-redact input.log --output clean.log
 
 # Preview changes without modifying files
-pii_redact input.log --dry-run
+pii-redact input.log --dry-run
 
 # Handle partial/probable matches without prompting
-pii_redact input.log --partial all         # Replace all partial matches
-pii_redact input.log --partial none        # Skip all partial matches
-pii_redact input.log --no-interactive      # Same as --partial none
+pii-redact input.log --partial all         # Replace all partial matches
+pii-redact input.log --partial none        # Skip all partial matches
+pii-redact input.log --no-interactive      # Same as --partial none
 
 # Disable colored output
-pii_redact input.log --no-color
+pii-redact input.log --no-color
 
 # Customize context lines shown for partial matches
-pii_redact input.log --context-lines 3
+pii-redact input.log --context-lines 3
 
 # Generate a JSON report (not created by default)
-pii_redact input.log --report                  # Auto-named: <output>_report.json
-pii_redact input.log --report report.json      # Custom report path
+pii-redact input.log --report                  # Auto-named: <output>_report.json
+pii-redact input.log --report report.json      # Custom report path
 ```
 
 ## Configuration
@@ -344,13 +344,13 @@ A detailed report is saved for each run:
 
 3. **Use `init` to auto-generate variations** instead of manually listing each format:
    ```bash
-   pii_redact init
+   pii-redact init
    ```
    This generates all format variations automatically for names, phones, cards, dates, and more.
 
 4. **Test with dry-run first** - Always preview changes before modifying files:
    ```bash
-   pii_redact important.log --dry-run
+   pii-redact important.log --dry-run
    ```
 
 5. **Keep your config file secure** - It contains your actual PII! Add it to `.gitignore`:
