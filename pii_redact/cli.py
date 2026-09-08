@@ -46,6 +46,18 @@ Examples:
 
   %(prog)s input.log --no-interactive
       Skip prompts for probable matches (exact matches only)
+
+  %(prog)s input.eml --strict
+      Also fail if any part of the input could not be read as text
+
+Exit codes:
+  0   Every output verified clean
+  1   Could not start: bad arguments, or missing/invalid config
+  2   VERIFICATION FAILED - configured PII is still recoverable from an
+      output file. Do not share it.
+  3   One or more files could not be processed
+  4   Content could not be inspected (--strict only); nothing was proven
+      about the parts that could not be read
 """
     )
 
@@ -89,6 +101,20 @@ Examples:
         '--no-color',
         action='store_true',
         help='Disable colored output'
+    )
+
+    parser.add_argument(
+        '--no-verify',
+        action='store_true',
+        help='Skip the post-redaction verification pass (not recommended: verification is '
+             'what catches PII hidden inside encoded content such as base64 or quoted-printable)'
+    )
+
+    parser.add_argument(
+        '--strict',
+        action='store_true',
+        help='Also exit non-zero when part of an input could not be inspected '
+             '(binary or compressed content), not only when PII is found to survive'
     )
 
     parser.add_argument(
@@ -191,7 +217,8 @@ def main():
         dry_run=args.dry_run,
         partial_mode=partial_mode,
         context_lines=args.context_lines,
-        reporter=reporter
+        reporter=reporter,
+        verify=not args.no_verify
     )
 
     # Initialize report
@@ -203,6 +230,7 @@ def main():
     print(f"PII fields configured: {len(config.pii_fields)}")
 
     # Process each file
+    failed_files = 0
     for input_path in input_files:
         try:
             output_path = Path(args.output) if args.output else None
@@ -210,6 +238,7 @@ def main():
             report.add_file_stats(stats)
         except Exception as e:
             reporter.print_error(f"Failed to process {input_path}: {e}")
+            failed_files += 1
             continue
 
     # Complete report
@@ -235,6 +264,27 @@ def main():
         if report_path:
             report.save(report_path)
             print(f"\nReport saved: {report_path}")
+
+    sys.exit(_exit_code(report, failed_files, strict=args.strict))
+
+
+def _exit_code(report: Report, failed_files: int, strict: bool) -> int:
+    """Decide the process exit status, worst outcome first.
+
+    Surviving PII outranks everything else: it is the one result where acting
+    on a successful-looking run does real damage. A file that could not be
+    processed at all comes next, since it silently produced no output. Content
+    that could not be inspected is advisory by default -- most files carry some
+    opaque blob, and a code that fires on every run is a code nobody checks --
+    so it only fails the run under --strict.
+    """
+    if report.files_with_leaks:
+        return 2
+    if failed_files:
+        return 3
+    if strict and report.files_uninspected:
+        return 4
+    return 0
 
 
 if __name__ == '__main__':

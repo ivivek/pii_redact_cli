@@ -61,10 +61,15 @@ class JSONHandler:
         return raw_text, data
 
     @staticmethod
+    def dumps(data: Any, indent: int = 2) -> str:
+        """Serialize data exactly as write() would, without touching the disk."""
+        return json.dumps(data, indent=indent, ensure_ascii=False)
+
+    @staticmethod
     def write(path: Path, data: Any, indent: int = 2) -> None:
         """Write data to JSON file."""
         with open(path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=indent, ensure_ascii=False)
+            f.write(JSONHandler.dumps(data, indent=indent))
 
     @staticmethod
     def get_output_path(input_path: Path, suffix: str = "_redacted") -> Path:
@@ -101,10 +106,17 @@ class YAMLHandler:
         return raw_text, data
 
     @staticmethod
+    def dumps(data: Any, default_flow_style: bool = False) -> str:
+        """Serialize data exactly as write() would, without touching the disk."""
+        return yaml.dump(
+            data, default_flow_style=default_flow_style, allow_unicode=True, sort_keys=False
+        )
+
+    @staticmethod
     def write(path: Path, data: Any, default_flow_style: bool = False) -> None:
         """Write data to YAML file."""
         with open(path, 'w', encoding='utf-8') as f:
-            yaml.dump(data, f, default_flow_style=default_flow_style, allow_unicode=True, sort_keys=False)
+            f.write(YAMLHandler.dumps(data, default_flow_style=default_flow_style))
 
     @staticmethod
     def get_output_path(input_path: Path, suffix: str = "_redacted") -> Path:

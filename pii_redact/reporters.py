@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from .matchers import Match
+from .verifier import VerificationResult
 
 
 @dataclass
@@ -20,6 +21,17 @@ class FileStats:
     partial_matches: dict[str, int] = field(default_factory=dict)  # field_name -> count
     partial_replaced: dict[str, int] = field(default_factory=dict)  # field_name -> count replaced
     partial_skipped: dict[str, int] = field(default_factory=dict)  # field_name -> count skipped
+    verification: VerificationResult = None  # None when verification was skipped
+
+    @property
+    def leaks(self) -> list:
+        """Configured values still recoverable from the output."""
+        return self.verification.leaks if self.verification else []
+
+    @property
+    def uninspected(self) -> list:
+        """Regions of the file that could not be searched at all."""
+        return self.verification.uninspected if self.verification else []
 
     @property
     def total_exact(self) -> int:
@@ -92,6 +104,16 @@ class Report:
     def total_replacements(self) -> int:
         return self.total_exact_replacements + self.total_partial_replaced
 
+    @property
+    def files_with_leaks(self) -> list[FileStats]:
+        """Outputs from which a configured value can still be recovered."""
+        return [f for f in self.files if f.leaks]
+
+    @property
+    def files_uninspected(self) -> list[FileStats]:
+        """Files containing content that could not be searched."""
+        return [f for f in self.files if f.uninspected]
+
     def to_dict(self) -> dict[str, Any]:
         """Convert report to dictionary for JSON serialization."""
         return {
@@ -103,7 +125,9 @@ class Report:
                 "total_exact_replacements": self.total_exact_replacements,
                 "total_partial_replaced": self.total_partial_replaced,
                 "total_partial_skipped": self.total_partial_skipped,
-                "total_replacements": self.total_replacements
+                "total_replacements": self.total_replacements,
+                "files_with_leaks": len(self.files_with_leaks),
+                "files_with_uninspected_content": len(self.files_uninspected)
             },
             "files": [
                 {
@@ -119,9 +143,39 @@ class Report:
                         "partial_replaced": f.total_partial_replaced,
                         "partial_skipped": f.total_partial_skipped,
                         "total_replacements": f.total_replacements
-                    }
+                    },
+                    "verification": self._verification_dict(f)
                 }
                 for f in self.files
+            ]
+        }
+
+    @staticmethod
+    def _verification_dict(stats: FileStats) -> dict[str, Any]:
+        """Serialize one file's verification outcome, or record that it was skipped."""
+        if stats.verification is None:
+            return {"ran": False}
+
+        return {
+            "ran": True,
+            "passed": stats.verification.passed,
+            "complete": stats.verification.complete,
+            "views_checked": stats.verification.views_checked,
+            "leaks": [
+                {
+                    "field": leak.field_name,
+                    "encoding": leak.encoding_path,
+                    "occurrences": leak.count
+                }
+                for leak in stats.leaks
+            ],
+            "uninspected": [
+                {
+                    "reason": region.reason,
+                    "encoding": region.encoding_path,
+                    "bytes": region.byte_length
+                }
+                for region in stats.uninspected
             ]
         }
 
@@ -204,6 +258,39 @@ class ConsoleReporter:
         print(f"  {self._c('Replacements:', self.CYAN)} {stats.total_replacements} "
               f"(exact: {stats.total_exact}, partial: {stats.total_partial_replaced})")
 
+    def print_verification(self, stats: FileStats) -> None:
+        """Report what the verification pass could and could not confirm.
+
+        Field names are printed but values never are: the point of the run is
+        to stop these strings travelling, and a console log is somewhere they
+        travel. The config key is enough to identify which entry leaked.
+        """
+        if stats.verification is None:
+            print(f"  {self._c('Verification: skipped (--no-verify)', self.YELLOW)}")
+            return
+
+        for region in stats.uninspected:
+            self.print_warning(
+                f"not inspected ({region.encoding_path}, {region.byte_length} bytes): {region.reason}"
+            )
+
+        if stats.leaks:
+            print(f"\n  {self._c('VERIFICATION FAILED - configured PII survives in the output:', self.RED + self.BOLD)}")
+            for leak in stats.leaks:
+                where = (
+                    "in the output text"
+                    if leak.is_plaintext
+                    else f"after decoding: {leak.encoding_path}"
+                )
+                print(f"    - {leak.field_name}: {leak.count} occurrence(s) {where}")
+            print(f"  {self._c('Do not share this file.', self.RED + self.BOLD)}")
+            return
+
+        if stats.uninspected:
+            print(f"  {self._c('Verification: no PII recoverable from the parts that could be read', self.YELLOW)}")
+        else:
+            print(f"  {self._c('Verification: passed', self.GREEN)}")
+
     def print_final_summary(self, report: Report) -> None:
         self.print_header("Summary")
         print(f"  Files processed: {report.total_files}")
@@ -211,6 +298,21 @@ class ConsoleReporter:
         print(f"  Total probable replacements: {report.total_partial_replaced}")
         print(f"  Total probable skipped: {report.total_partial_skipped}")
         print(f"  {self._c(f'Total replacements: {report.total_replacements}', self.BOLD)}")
+
+        leaked = report.files_with_leaks
+        uninspected = report.files_uninspected
+
+        if leaked:
+            print()
+            print(f"  {self._c(f'Verification FAILED for {len(leaked)} file(s):', self.RED + self.BOLD)}")
+            for stats in leaked:
+                print(f"    - {stats.output_path}")
+        if uninspected:
+            print()
+            print(f"  {self._c(f'Content not inspected in {len(uninspected)} file(s):', self.YELLOW)}")
+            for stats in uninspected:
+                print(f"    - {stats.file_path}")
+            print(f"  {self._c('A clean result covers only the parts that could be read as text.', self.DIM)}")
 
     def print_dry_run_notice(self) -> None:
         print(f"\n{self._c('DRY RUN - No files were modified', self.YELLOW + self.BOLD)}")

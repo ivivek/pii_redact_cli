@@ -8,6 +8,7 @@ from typing import Callable
 from .config import Config, PIIField, DEFAULT_CONFIG_PATH
 from .matchers import Match, Matcher, apply_replacement
 from .reporters import FileStats, Report, ConsoleReporter
+from .verifier import Verifier, detect_binary_input
 from .file_handlers.text_handler import TextHandler
 from .file_handlers.structured_handler import JSONHandler, YAMLHandler, StructuredHandler
 
@@ -52,7 +53,8 @@ class Redactor:
         dry_run: bool = False,
         partial_mode: str = 'ask',
         context_lines: int = 2,
-        reporter: ConsoleReporter = None
+        reporter: ConsoleReporter = None,
+        verify: bool = True
     ):
         self.config = config
         self.dry_run = dry_run
@@ -60,6 +62,7 @@ class Redactor:
         self.context_lines = context_lines
         self.reporter = reporter or ConsoleReporter()
         self.matcher = Matcher(config.pii_fields, config.case_sensitive)
+        self.verifier = Verifier(self.matcher) if verify else None
 
     def process_file(self, input_path: Path, output_path: Path = None) -> FileStats:
         """Process a single file and return statistics."""
@@ -137,6 +140,9 @@ class Redactor:
             TextHandler.write(output_path, text)
 
         self.reporter.print_file_complete(stats)
+
+        self._verify_output(stats, text, input_bytes=input_path.read_bytes())
+        self.reporter.print_verification(stats)
         return stats
 
     def _process_structured_file(self, input_path: Path, output_path: Path, handler_class) -> FileStats:
@@ -215,7 +221,32 @@ class Redactor:
             handler_class.write(output_path, redacted_data)
 
         self.reporter.print_file_complete(stats)
+
+        # Verify the serialized form, which is what actually gets shared -- and
+        # what carries anything the structure walk skipped, such as PII stored
+        # as a JSON number rather than a string.
+        self._verify_output(stats, handler_class.dumps(redacted_data))
+        self.reporter.print_verification(stats)
         return stats
+
+    def _verify_output(self, stats: FileStats, redacted_text: str, input_bytes: bytes = None) -> None:
+        """Check the redacted text, and every decoding of it, for surviving PII.
+
+        Runs on the in-memory result rather than the file on disk so that a dry
+        run is verified too -- the whole point of --dry-run is to find out what
+        would happen before committing to it.
+        """
+        if self.verifier is None:
+            return
+
+        stats.verification = self.verifier.verify_text(redacted_text)
+
+        # An input that was never text in the first place was never really
+        # searched, whatever the replacement count says.
+        if input_bytes is not None:
+            binary = detect_binary_input(input_bytes)
+            if binary:
+                stats.verification.uninspected.insert(0, binary)
 
     def _replace_partial(self, text: str, match: Match) -> str:
         """Replace a partial match's token in text, preserving case.

@@ -13,6 +13,8 @@ Unlike generic PII detection tools that use pattern matching or NLP to find *any
 - **Glob patterns** - Process multiple files at once (`logs/**/*.log`)
 - **Interactive mode** - Review partial matches with surrounding context before deciding
 - **Dry-run mode** - Preview changes without modifying files
+- **Output verification** - Re-checks every output through base64, quoted-printable, percent-encoding, gzip and more, so PII hidden inside encoded content is reported instead of silently missed
+- **Pipeline-friendly exit codes** - Non-zero when PII survives, so a failed redaction can be caught by a script rather than only by reading the console
 - **Detailed reports** - JSON report of all replacements made
 
 ## Installation
@@ -203,6 +205,65 @@ pii-redact input.log --context-lines 3
 # Generate a JSON report (not created by default)
 pii-redact input.log --report                  # Auto-named: <output>_report.json
 pii-redact input.log --report report.json      # Custom report path
+
+# Also fail when part of a file could not be inspected at all
+pii-redact input.eml --strict
+
+# Skip the verification pass (not recommended)
+pii-redact input.log --no-verify
+```
+
+## Verification
+
+Matching runs against a file's literal bytes. Anything that encodes text on the
+way in — a base64 or quoted-printable MIME part in an `.eml`, a percent-encoded
+query string in an access log, an HTML entity, a gzipped payload — hides that
+text from the matcher. The redaction still reports a replacement count, and
+grepping the output for your PII still finds nothing, so the obvious sanity
+check confirms a file is clean when it is not.
+
+After redacting, the tool decodes its own output every way it knows how and
+re-runs matching over each decoded view. Anything still recoverable is reported
+as a failure:
+
+```
+  Output: order_redacted.eml
+  Replacements: 5 (exact: 5, partial: 0)
+
+  VERIFICATION FAILED - configured PII survives in the output:
+    - text_1_v1: 1 occurrence(s) after decoding: base64
+    - text_2_v1: 1 occurrence(s) after decoding: quoted-printable
+  Do not share this file.
+```
+
+Field names are shown, values never are — the config key identifies the entry
+without printing the PII to your terminal or CI log.
+
+Content that cannot be searched as text at all (a PDF attachment, a
+zip-backed `.docx`, a compressed blob) is reported separately, so a clean
+result never quietly stands in for "nothing was looked at":
+
+```
+Warning: not inspected (base64, 3990 bytes): PDF document -- its contents cannot be searched as text
+  Verification: no PII recoverable from the parts that could be read
+```
+
+This is a safety net, not a redactor: it tells you an encoded file was not
+fully cleaned, it does not clean it. To actually redact encoded content, decode
+it to text first and run the tool on that.
+
+### Exit codes
+
+| Code | Meaning |
+|------|---------|
+| `0` | Every output verified clean |
+| `1` | Could not start: bad arguments, or missing/invalid config |
+| `2` | Verification failed — configured PII is still recoverable from an output |
+| `3` | One or more files could not be processed |
+| `4` | Content could not be inspected (`--strict` only) |
+
+```bash
+pii-redact export.eml --no-interactive || echo "not safe to share"
 ```
 
 ## Configuration
@@ -436,6 +497,8 @@ A detailed report is saved for each run:
 - **Config files contain real PII** - Never commit your personal config to version control
 - **Redacted files may still contain PII** - Partial matches are only detected for alphanumeric PII; always review output
 - **This is not a foolproof solution** - It only finds what you explicitly configure; novel PII formats won't be detected
+- **Encoded content is detected, not redacted** - Verification tells you when configured PII survives inside a base64 or quoted-printable part; it does not rewrite that part. Treat a non-zero exit as "do not share", not as a warning to skim past
+- **A clean verification only covers what could be read** - Binary and compressed content is reported as uninspected; use `--strict` to make that fail the run
 
 ## Contributing
 

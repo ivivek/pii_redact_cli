@@ -30,6 +30,8 @@ pii-redact file.log --dry-run              # Preview without modifying
 pii-redact file.log --partial all          # Replace all partial matches (no prompts)
 pii-redact file.log --partial none         # Skip all partial matches (no prompts)
 pii-redact file.log -c custom_config.yaml  # Use a custom config path
+pii-redact file.eml --strict               # Also fail if content could not be inspected
+pii-redact file.log --no-verify            # Skip the verification pass
 ```
 
 No test suite or linting configuration exists currently.
@@ -44,7 +46,8 @@ No test suite or linting configuration exists currently.
 3. `matchers.py` finds exact matches (word boundaries) and partial matches (embedded in larger tokens)
 4. `redactor.py` orchestrates processing, routes to appropriate file handler
 5. `file_handlers/` contains format-specific handlers (text, JSON, YAML)
-6. `reporters.py` tracks statistics and outputs results
+6. `verifier.py` re-checks the redacted output, decoding it every way it knows (base64, quoted-printable, percent/form encoding, HTML entities, backslash escapes, unicode whitespace, gzip/zlib) and re-running exact matching over each decoded view
+7. `reporters.py` tracks statistics and outputs results
 
 **Key Design Decisions:**
 - PII fields sorted by length (longest first) to handle overlapping values correctly
@@ -52,6 +55,9 @@ No test suite or linting configuration exists currently.
 - Exact matches: standalone words with boundaries; Partial matches: embedded in larger tokens, require user confirmation
 - Position-based replacement in reverse order to preserve character positions
 - Multi-encoding support for text files (UTF-8 → Latin-1 → CP1252 fallback)
+- Verification runs on the in-memory result, so `--dry-run` is verified too
+- Verification is calibrated asymmetrically: leak detection decodes speculatively (decoding non-encoded content yields garbage, and garbage contains no configured value, so a wrong guess costs only a wasted scan), while "could not inspect" warnings require strong evidence — a warning that cries wolf gets ignored, which recreates the silent failure it exists to prevent
+- Leak reports name the config field, never the value, so PII does not travel into terminals and CI logs
 
 ## Config Format
 
@@ -75,4 +81,10 @@ settings:
 ## Output
 
 - Redacted files: `{filename}_redacted{extension}`
-- JSON reports (opt-in via `--report`): timestamps, file stats, match counts
+- JSON reports (opt-in via `--report`): timestamps, file stats, match counts, per-file verification results
+
+## Exit codes
+
+`0` clean · `1` startup failure (bad args/config) · `2` verification failed, PII still recoverable
+from an output · `3` a file could not be processed · `4` content could not be inspected (`--strict` only).
+Worst outcome wins. Before this existed the CLI always exited 0, including when a file raised.
